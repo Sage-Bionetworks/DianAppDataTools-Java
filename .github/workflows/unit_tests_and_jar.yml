@@ -1,0 +1,42 @@
+name: Unit Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+      - ci_test
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      SYNAPSE_PAT: ${{ secrets.SYNAPSE_PAT }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
+      - name: Synapse access token copy
+        run: |
+          sed -i 's/synapsePersonalAccessToken = ""/synapsePersonalAccessToken = "$SYNAPSE_PAT"/' ${GITHUB_WORKSPACE}/DataMigration/src/main/java/org/sagebionetoworks/dian/datamigration/DataMigration.java
+                  
+      - name: Unit Test
+        run: ./gradlew test
+
+      - name: Upload Test Reports Folder
+        uses: actions/upload-artifact@v2
+        if: ${{ always() }} # IMPORTANT: Upload reports regardless of status
+        with:
+          name: UnitTestResults
+          path: DataMigration/build/test-results/test/*.xml # path to where the xml test results are stored
+          
+      - name: Build executable jar
+        run: ./gradlew jar
+          
+      - name: Run DataMigration
+        run: java -jar ${GITHUB_WORKSPACE}/DataMigration/build/libs/DataMigration.jar
+          

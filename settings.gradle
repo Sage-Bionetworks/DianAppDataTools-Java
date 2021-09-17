@@ -1,0 +1,2 @@
+include ':DataMigration'
+rootProject.name = "DataMigration"
