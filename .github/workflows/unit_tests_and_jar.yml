@@ -13,15 +13,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      SYNAPSE_PAT: ${{ secrets.SYNAPSE_PAT }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         
       - name: Synapse access token copy
         run: |
-          sed -i 's/synapsePersonalAccessToken = ""/synapsePersonalAccessToken = "$SYNAPSE_PAT"/' ${GITHUB_WORKSPACE}/DataMigration/src/main/java/org/sagebionetoworks/dian/datamigration/DataMigration.java
+          sed -i 's/synapsePersonalAccessToken = ""/synapsePersonalAccessToken = "${{ secrets.SYNAPSE_PAT }}"/' ${GITHUB_WORKSPACE}/DataMigration/src/main/java/org/sagebionetoworks/dian/datamigration/DataMigration.java
                   
       - name: Unit Test
         run: ./gradlew test
