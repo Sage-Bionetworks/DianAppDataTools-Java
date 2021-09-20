@@ -1,14 +1,41 @@
+/*
+ * BSD 3-Clause License
+ *
+ * Copyright 2021  Sage Bionetworks. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1.  Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * 2.  Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation and/or
+ * other materials provided with the distribution.
+ *
+ * 3.  Neither the name of the copyright holder(s) nor the names of any contributors
+ * may be used to endorse or promote products derived from this software without
+ * specific prior written permission. No license is granted to the trademarks of
+ * the copyright holders even if such marks are included in this software.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 package org.sagebionetoworks.dian.datamigration;
 
 import com.google.common.collect.Lists;
 
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.sagebionetworks.client.SynapseAdminClient;
-import org.sagebionetworks.client.SynapseAdminClientImpl;
 import org.sagebionetworks.client.SynapseClient;
 import org.sagebionetworks.client.SynapseClientImpl;
 import org.sagebionetworks.client.exceptions.SynapseException;
@@ -17,17 +44,9 @@ import org.sagebionetworks.repo.model.EntityChildrenResponse;
 import org.sagebionetworks.repo.model.EntityHeader;
 import org.sagebionetworks.repo.model.EntityType;
 import org.sagebionetworks.repo.model.FileEntity;
-import org.sagebionetworks.repo.model.Folder;
 import org.sagebionetworks.repo.model.Project;
-import org.sagebionetworks.repo.model.download.AddBatchOfFilesToDownloadListRequest;
-import org.sagebionetworks.repo.model.download.AddBatchOfFilesToDownloadListResponse;
-import org.sagebionetworks.repo.model.download.DownloadListItem;
-import org.sagebionetworks.repo.model.file.BulkFileDownloadRequest;
-import org.sagebionetworks.repo.model.file.CloudProviderFileHandleInterface;
-import org.sagebionetworks.repo.model.file.FileHandle;
 import org.sagebionetworks.repo.model.file.FileHandleAssociateType;
 import org.sagebionetworks.repo.model.file.FileHandleAssociation;
-import org.sagebionetworks.repo.model.file.S3FileHandle;
 import org.sagebionetworks.utils.MD5ChecksumHelper;
 
 import java.io.File;
@@ -37,11 +56,6 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
-/**
- * Example local unit test, which will execute on the development machine (host).
- *
- * @see <a href="http://d.android.com/tools/testing">Testing documentation</a>
- */
 public class SynapseTests {
 
     private static SynapseClient synapse;
@@ -53,25 +67,10 @@ public class SynapseTests {
     public static void beforeClass() throws Exception {
         // Create 2 users
         synapse = new SynapseClientImpl();
-        synapse.setBearerAuthorizationToken(DataMigration.synapsePersonalAccessToken);
+        synapse.setBearerAuthorizationToken(SynapseUtil.synapsePersonalAccessToken);
 
         project = new Project();
         project.setId(projectId);
-    }
-
-    @Before
-    public void before() throws SynapseException {
-
-    }
-
-    @After
-    public void after() throws Exception {
-
-    }
-
-    @AfterClass
-    public static void afterClass() throws Exception {
-
     }
 
     @Test
@@ -239,5 +238,66 @@ public class SynapseTests {
         String testSessionsChecksumActual = MD5ChecksumHelper.getMD5Checksum(testSessionsZipFile);
         // Expected was calculated by downloading the zip separately in a browser and getting the checksum
         assertEquals("f20a35976d448e5e6a8d4385169b6bc6", testSessionsChecksumActual);
+    }
+
+
+    @Test
+    public void testFilterInvalidFolderFormats() throws SynapseException {
+        List<EntityHeader> entities = new ArrayList<>();
+        entities.add(createEntity("2021-09-24"));
+        entities.add(createEntity("2021-10-01"));
+        entities.add(createEntity("2021-10-10"));
+        entities.add(createEntity("abcdefg"));
+        entities.add(createEntity("adsfefsefs2021-10-10"));
+        EntityChildrenResponse response = new EntityChildrenResponse();
+        response.setPage(entities);
+        List<EntityHeader> actual = SynapseUtil.filterInvalidFolderFormats(response);
+        assertNotNull(actual);
+        assertEquals(3, actual.size());
+        assertEquals("2021-09-24", actual.get(0).getName());
+        assertEquals("2021-10-01", actual.get(1).getName());
+        assertEquals("2021-10-10", actual.get(2).getName());
+    }
+
+    @Test
+    public void testFindFilterWithName() throws SynapseException {
+        List<EntityHeader> entities = new ArrayList<>();
+        entities.add(createEntity("test_session"));
+        entities.add(createEntity("test_session_schedule"));
+        entities.add(createEntity("wake_sleep_schedule"));
+        entities.add(createEntity("2021-09-24"));
+        entities.add(createEntity("2021-10-01"));
+        entities.add(createEntity("2021-10-10"));
+        entities.add(createEntity("abcdefg"));
+        entities.add(createEntity("adsfefsefs2021-10-10"));
+        EntityChildrenResponse response = new EntityChildrenResponse();
+        response.setPage(entities);
+
+        // Test null finds
+        assertNull(SynapseUtil.findFolderWithName("abcd", response));
+        assertNull(SynapseUtil.findFolderWithName("2021-09-2", response));
+        assertNull(SynapseUtil.findFolderWithName("test_session1", response));
+
+        // Test matches
+        EntityHeader testSession = SynapseUtil
+                .findFolderWithName("test_session", response);
+        assertNotNull(testSession);
+        assertEquals("test_session", testSession.getName());
+
+        EntityHeader testSessionSchedule = SynapseUtil
+                .findFolderWithName("test_session_schedule", response);
+        assertNotNull(testSessionSchedule);
+        assertEquals("test_session_schedule", testSessionSchedule.getName());
+
+        EntityHeader wakeSleepSchedule = SynapseUtil
+                .findFolderWithName("wake_sleep_schedule", response);
+        assertNotNull(wakeSleepSchedule);
+        assertEquals("wake_sleep_schedule", wakeSleepSchedule.getName());
+    }
+
+    private EntityHeader createEntity(String name) {
+        EntityHeader entity = new EntityHeader();
+        entity.setName(name);
+        return entity;
     }
 }

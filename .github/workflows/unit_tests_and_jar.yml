@@ -19,7 +19,15 @@ jobs:
         
       - name: Synapse access token copy
         run: |
-          sed -i 's/synapsePersonalAccessToken = ""/synapsePersonalAccessToken = "${{ secrets.SYNAPSE_PAT }}"/' ${GITHUB_WORKSPACE}/DataMigration/src/main/java/org/sagebionetoworks/dian/datamigration/DataMigration.java
+          sed -i 's/synapsePersonalAccessToken = ""/synapsePersonalAccessToken = "${{ secrets.SYNAPSE_PAT }}"/' ${GITHUB_WORKSPACE}/DataMigration/src/main/java/org/sagebionetoworks/dian/datamigration/SynapseUtil.java
+          
+      - name: Bridge auth copy 1
+        run: |
+          sed -i 's/bridgeAdminEmail = ""/bridgeAdminEmail = "${{ secrets.BRIDGE_EMAIL }}"/' ${GITHUB_WORKSPACE}/DataMigration/src/main/java/org/sagebionetoworks/dian/datamigration/BridgeUtil.java
+          
+      - name: Bridge auth copy 2
+        run: |
+          sed -i 's/bridgeAdminPassword = ""/bridgeAdminPassword = "${{ secrets.BRIDGE_EMAIL }}"/' ${GITHUB_WORKSPACE}/DataMigration/src/main/java/org/sagebionetoworks/dian/datamigration/BridgeUtil.java
                   
       - name: Unit Test
         run: ./gradlew test
