@@ -27,7 +27,7 @@ jobs:
           
       - name: Bridge auth copy 2
         run: |
-          sed -i 's/bridgeAdminPassword = ""/bridgeAdminPassword = "${{ secrets.BRIDGE_EMAIL }}"/' ${GITHUB_WORKSPACE}/DataMigration/src/main/java/org/sagebionetoworks/dian/datamigration/BridgeUtil.java
+          sed -i 's/bridgeAdminPassword = ""/bridgeAdminPassword = "${{ secrets.BRIDGE_PW }}"/' ${GITHUB_WORKSPACE}/DataMigration/src/main/java/org/sagebionetoworks/dian/datamigration/BridgeUtil.java
                   
       - name: Unit Test
         run: ./gradlew test
@@ -38,10 +38,4 @@ jobs:
         with:
           name: UnitTestResults
           path: DataMigration/build/test-results/test/*.xml # path to where the xml test results are stored
-          
-      - name: Build executable jar
-        run: ./gradlew jar
-          
-      - name: Run DataMigration
-        run: java -jar ${GITHUB_WORKSPACE}/DataMigration/build/libs/DataMigration.jar
           
