@@ -259,7 +259,6 @@ public class BridgeUtil {
     public static void writeAllUserReports(
             String sessionToken, List<BridgeUtil.MigrationPair> migrationPairList) throws IOException {
 
-        List<BridgeUserData> migratedBridgeUsers = new ArrayList<>();
         ObjectWriter ow = new ObjectMapper().writer();
 
         // Now we have all the users created to upload their reports
@@ -267,10 +266,7 @@ public class BridgeUtil {
             BridgeUserData bridgeUser = migration.bridgeUser;
             SynapseUtil.HmUserData hmUser = migration.hmUser;
 
-            MigratedStatus isMigrated = getSingletonReport(sessionToken,
-                    MIGRATED_REPORT_ID, bridgeUser.id, MigratedStatus.class);
-
-            if (isMigrated == null || !isMigrated.status) {
+            if (shouldMigrate(sessionToken, bridgeUser)) {
                 List<String> reportIds = new ArrayList<>();
                 // Only re-write the user's data if they have not already migrated
                 // Once a user successfully signs in through the sage app, this
@@ -299,6 +295,15 @@ public class BridgeUtil {
                 System.out.println("User " + hmUser.arcId + " has already migrated to Bridge.");
             }
         }
+    }
+
+    public static boolean shouldMigrate(
+            String sessionToken, BridgeUserData bridgeUser) throws IOException {
+
+        MigratedStatus isMigrated = getSingletonReport(sessionToken,
+                MIGRATED_REPORT_ID, bridgeUser.id, MigratedStatus.class);
+
+        return isMigrated == null || !isMigrated.status;
     }
 
     /**

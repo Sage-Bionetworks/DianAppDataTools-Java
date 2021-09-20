@@ -63,6 +63,46 @@ public class BridgeTests {
     }
 
     @Test
+    public void testShouldMigrateUser() throws MalformedURLException, IOException {
+        // Create new user
+        BridgeUtil.BridgeUserData newUser = BridgeUtil.createUser(sessionToken, testArcId);
+        assertNotNull(newUser);
+        assertNotNull(newUser.id);
+        assertEquals(testArcId, newUser.arcId);
+        assertEquals(testArcId, newUser.externalId);
+        assertNotNull(newUser.attributes);
+        assertEquals(testArcId, newUser.attributes.ARC_ID);
+
+        // New user has not signed into bridge yet, they should migrate
+        assertTrue(BridgeUtil.shouldMigrate(sessionToken, newUser));
+
+        // Write report showing that the user should still migrate
+        BridgeUtil.MigratedStatus migratedStatus = new BridgeUtil.MigratedStatus();
+        migratedStatus.status = false;
+        String json = new ObjectMapper().writer().writeValueAsString(migratedStatus);
+        BridgeUtil.writeSingletonReport(sessionToken, newUser.id,
+                BridgeUtil.MIGRATED_REPORT_ID,json);
+
+        // New user has not signed into bridge yet, they should migrate
+        assertTrue(BridgeUtil.shouldMigrate(sessionToken, newUser));
+
+        // Write report showing that the user should stop migrating
+        // This will be what the app writes when it logs in
+        migratedStatus.status = true;
+        json = new ObjectMapper().writer().writeValueAsString(migratedStatus);
+        BridgeUtil.writeSingletonReport(sessionToken, newUser.id,
+                BridgeUtil.MIGRATED_REPORT_ID,json);
+
+        // New user should have migration status set to true, so shouldMigrate is false
+        assertFalse(BridgeUtil.shouldMigrate(sessionToken, newUser));
+
+        // Delete user
+        BridgeUtil.MigrationPair migrationPair = new BridgeUtil.MigrationPair();
+        migrationPair.bridgeUser = newUser;
+        BridgeUtil.deleteUserList(sessionToken, Collections.singletonList(migrationPair));
+    }
+
+    @Test
     public void testCreateAndDeleteUser() throws MalformedURLException, IOException {
         // Check the user does not already exist
         BridgeUtil.UserList userList = BridgeUtil.getAllUsers(sessionToken);
