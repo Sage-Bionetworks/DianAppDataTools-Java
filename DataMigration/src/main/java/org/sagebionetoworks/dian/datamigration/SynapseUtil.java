@@ -48,6 +48,7 @@ import org.sagebionetworks.repo.model.FileEntity;
 import org.sagebionetworks.repo.model.Project;
 import org.sagebionetworks.repo.model.file.FileHandleAssociateType;
 import org.sagebionetworks.repo.model.file.FileHandleAssociation;
+import org.sagebionetworks.schema.generator.FileUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -72,7 +73,7 @@ public class SynapseUtil {
     // NEVER commit your personal access token to github
     public static String synapsePersonalAccessToken = "";
 
-    private static SynapseClient synapse;
+    public static SynapseClient synapse;
 
     private static Project project;
     private static String projectId = "syn25791302";
@@ -80,9 +81,20 @@ public class SynapseUtil {
     public static String TEST_SESSIONS_FOLDER_NAME = "test_session";
     public static String SESSION_SCHEDULE_FOLDER_NAME = "test_session_schedule";
     public static String WAKE_SLEEP_FOLDER_NAME = "wake_sleep_schedule";
+    public static String HASD_PARTICIPANTS_FOLDER_NAME = "hasd_participants";
+    public static String EXR_PARTICIPANTS_FOLDER_NAME = "exr_participants";
 
     public static String EXTRACTED_SUFFIX = "_extracted";
     public static String ZIP = ".zip";
+
+    public static String HASD_PREFIX = "hasd";
+    public static String EXR_PREFIX = "exr";
+    public static String PARTICIPANT_FILE_SUFFIX = "participant_json.zip";
+
+    public static String CONTAINS_SITE_LOC = "-site_location-";
+    public static String CONTAINS_PARTICIPANT_SITE_LOC = "-participant_site_location-";
+    public static String CONTAINS_PARTICIPANT = "-participant-";
+    public static String CONTAINS_PHONE = "-participant_phone-";
 
     public static String[] IMPORTANT_FOLDERS = new String[] {
             TEST_SESSIONS_FOLDER_NAME,
@@ -100,6 +112,28 @@ public class SynapseUtil {
         project.setId(projectId);
     }
 
+    /**
+     * Clear all downloaded content
+     */
+    public static void clearAllFiles() {
+        File[] folders = new File[] {
+                new File(TEST_SESSIONS_FOLDER_NAME),
+                new File(TEST_SESSIONS_FOLDER_NAME + EXTRACTED_SUFFIX),
+                new File(SESSION_SCHEDULE_FOLDER_NAME),
+                new File(SESSION_SCHEDULE_FOLDER_NAME + EXTRACTED_SUFFIX),
+                new File(WAKE_SLEEP_FOLDER_NAME),
+                new File(WAKE_SLEEP_FOLDER_NAME + EXTRACTED_SUFFIX),
+                new File(HASD_PARTICIPANTS_FOLDER_NAME),
+                new File(HASD_PARTICIPANTS_FOLDER_NAME + EXTRACTED_SUFFIX),
+                new File(EXR_PARTICIPANTS_FOLDER_NAME),
+                new File(EXR_PARTICIPANTS_FOLDER_NAME + EXTRACTED_SUFFIX)
+        };
+        for (File folder: folders) {
+            if (folder.exists()) {
+                FileUtils.recursivelyDeleteDirectory(folder);
+            }
+        }
+    }
 
     /**
      * @param files to download
@@ -158,6 +192,52 @@ public class SynapseUtil {
         folders.testSessions = testSessionExtractedFolder;
         folders.sessionSchedules = testSessionScheduleExtractedFolder;
         folders.wakeSleepSchedules = wakeSleepScheduleExtractedFolder;
+        return folders;
+    }
+
+    /**
+     * @param files to download
+     * @throws SynapseException throws if download fails
+     */
+    public static DianParticipantFileFolders downloadDianParticipantFiles(
+            DianParticipantFiles files) throws SynapseException, IOException {
+
+        // Download and unzip the hasd and exr participants JSON
+        File hasdParticipantsFolder = createFolderIfNecessary(HASD_PARTICIPANTS_FOLDER_NAME);
+        File hasdParticipantsExtractedFolder = createFolderIfNecessary(
+                HASD_PARTICIPANTS_FOLDER_NAME + EXTRACTED_SUFFIX);
+        if (hasdParticipantsFolder != null && hasdParticipantsExtractedFolder != null) {
+            if (files.hasdParticipants != null) {
+                FileHandleAssociation file = files.hasdParticipants;
+                File download = new File(HASD_PARTICIPANTS_FOLDER_NAME +
+                        File.separator + file.getAssociateObjectId() + ZIP);
+                System.out.println("Downloading file " + file.getAssociateObjectId() + ".zip");
+                synapse.downloadFile(file, download);
+                System.out.println("Unzipping file " + file.getAssociateObjectId() + ".zip");
+                UnzipUtil.unzip(download.getAbsolutePath(),
+                        hasdParticipantsExtractedFolder.getAbsolutePath());
+            }
+        }
+
+        File exrParticipantsFolder = createFolderIfNecessary(EXR_PARTICIPANTS_FOLDER_NAME);
+        File exrParticipantsExtractedFolder = createFolderIfNecessary(
+                EXR_PARTICIPANTS_FOLDER_NAME + EXTRACTED_SUFFIX);
+        if (exrParticipantsFolder != null && exrParticipantsExtractedFolder != null) {
+            if (files.exrParticipants != null) {
+                FileHandleAssociation file = files.exrParticipants;
+                File download = new File(EXR_PARTICIPANTS_FOLDER_NAME +
+                        File.separator + file.getAssociateObjectId() + ZIP);
+                System.out.println("Downloading file " + file.getAssociateObjectId() + ".zip");
+                synapse.downloadFile(file, download);
+                System.out.println("Unzipping file " + file.getAssociateObjectId() + ".zip");
+                UnzipUtil.unzip(download.getAbsolutePath(),
+                        exrParticipantsExtractedFolder.getAbsolutePath());
+            }
+        }
+
+        DianParticipantFileFolders folders = new DianParticipantFileFolders();
+        folders.hasdParticipants = hasdParticipantsExtractedFolder;
+        folders.exrParticipants = exrParticipantsExtractedFolder;
         return folders;
     }
 
@@ -316,7 +396,7 @@ public class SynapseUtil {
         File folder = new File(folderName);
         if (!folder.exists() || !folder.isDirectory()) {
             if (!folder.mkdir()) {
-                System.out.println("Could not create download folder " + folderName);
+                System.out.println("Could not create folder " + folderName);
                 return null;
             }
         }
@@ -382,7 +462,64 @@ public class SynapseUtil {
             files.wakeSleepSchedules = wakeSleepSchedules;
 
         } catch (Exception e) {
-            System.out.println("Failed to find all the ZIP files. Error: " + e.getLocalizedMessage());
+            System.out.println("Failed to find all the ZIP files for testSessions, " +
+                    "sessionSchedules, and wakeSleepSchedules. Error: " + e.getLocalizedMessage());
+        }
+
+        return files;
+    }
+
+    /**
+     * @return all the relevant participant ZIP files to download for the migration
+     */
+    public static DianParticipantFiles findRelevantParticipantFiles() {
+
+        DianParticipantFiles files = new DianParticipantFiles();
+
+        try {
+            // Now get the HASD / EXR participant ZIP files
+            EntityChildrenRequest fileRequest = new EntityChildrenRequest();
+            fileRequest.setParentId(project.getId());
+            fileRequest.setIncludeTypes(Lists.newArrayList(EntityType.file));
+
+            EntityChildrenResponse fileResponse = synapse.getEntityChildren(fileRequest);
+            if (fileResponse.getPage() == null || fileResponse.getPage().isEmpty()) {
+                return files;
+            }
+
+            for (EntityHeader fileHeader: fileResponse.getPage()) {
+                FileEntity fileEntity = null;
+
+                // We only care about the hasd and exr participant JSON ZIP files
+                if(fileHeader.getName().startsWith(HASD_PREFIX) &&
+                        fileHeader.getName().endsWith(PARTICIPANT_FILE_SUFFIX)) {
+                    fileEntity = synapse.getEntity(fileHeader.getId(), FileEntity.class);
+                }
+                if(fileHeader.getName().startsWith(EXR_PREFIX) &&
+                        fileHeader.getName().endsWith(PARTICIPANT_FILE_SUFFIX)) {
+                    fileEntity = synapse.getEntity(fileHeader.getId(), FileEntity.class);
+                }
+
+                if (fileEntity != null) {
+                    String fileHandleId = fileEntity.getDataFileHandleId();
+                    FileHandleAssociation fileHandleAssociation = new FileHandleAssociation();
+                    fileHandleAssociation.setFileHandleId(fileHandleId);
+                    fileHandleAssociation.setAssociateObjectId(fileHeader.getId());
+                    fileHandleAssociation.setAssociateObjectType(FileHandleAssociateType.FileEntity);
+
+                    if (fileHeader.getName().startsWith(HASD_PREFIX)) {
+                        System.out.println("Found HASD participants file " + fileHeader.getName());
+                        files.hasdParticipants = fileHandleAssociation;
+                    } else if (fileHeader.getName().startsWith(EXR_PREFIX)) {
+                        System.out.println("Found EXR participants file " + fileHeader.getName());
+                        files.exrParticipants = fileHandleAssociation;
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to find all the ZIP files for the participant JSON. " +
+                    "Error: " + e.getLocalizedMessage());
         }
 
         return files;
@@ -421,6 +558,120 @@ public class SynapseUtil {
         data.sort((u1, u2) -> u1.arcId.compareTo(u2.arcId));
 
         return data;
+    }
+
+    /**
+     * @param folders containing both hasd and exr participant JSON
+     * @return the full list of hasd and exr users
+     * @throws IOException if something goes wrong
+     */
+    public static @NonNull List<HmUserData> createHmUserRaterData(
+            DianParticipantFileFolders folders) throws IOException {
+
+        List<HmUserData> data = new ArrayList<>();
+
+        data.addAll(findAllParticipantsInTableRowData(folders.hasdParticipants));
+        data.addAll(findAllParticipantsInTableRowData(folders.exrParticipants));
+
+        // Sort by Arc ID
+        data.sort((u1, u2) -> u1.arcId.compareTo(u2.arcId));
+
+        return data;
+    }
+
+    /**
+     * @param folder that is an unzipped folder with 4-5 participant JSON files
+     * @return all the existing participants, their ARC ID, and their site location (rater) email
+     * @throws IOException if something goes wrong
+     */
+    public static @NonNull List<HmUserData> findAllParticipantsInTableRowData(File folder) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        List<HmUserData> userList = new ArrayList<>();
+
+        if (folder == null) {
+            return userList;
+        }
+
+        TableRow.ParticipantFiles files = findParticipantFiles(folder);
+        TableRow.ParticipantSiteLocation[] userAndSiteLocList = mapper.readValue(
+                new FileInputStream(files.participantSiteLocations),
+                TableRow.ParticipantSiteLocation[].class);
+        TableRow.Participant[] participantList = mapper.readValue(
+                new FileInputStream(files.participants),
+                TableRow.Participant[].class);
+        TableRow.SiteLocation[] siteLocList = mapper.readValue(
+                new FileInputStream(files.siteLocations),
+                TableRow.SiteLocation[].class);
+
+        TableRow.ParticipantPhone[] phoneList = new TableRow.ParticipantPhone[0];
+        if (files.phone != null) {
+            phoneList = mapper.readValue(
+                    new FileInputStream(files.phone),
+                    TableRow.ParticipantPhone[].class);
+        }
+
+        for (TableRow.ParticipantSiteLocation userAndSiteLoc: userAndSiteLocList) {
+            TableRow.SiteLocation site = TableRow.findSiteLocation(
+                    userAndSiteLoc.site_location, siteLocList);
+            TableRow.Participant participant = TableRow.findParticipant(
+                    userAndSiteLoc.participant, participantList);
+            TableRow.ParticipantPhone phone = TableRow.findParticipantPhone(
+                    userAndSiteLoc.participant, phoneList);
+
+            if (site != null && participant != null) {
+                HmUserData user = new HmUserData();
+                user.arcId = participant.participant_id;
+                user.siteLocationEmail = site.contact_email;
+                user.siteLocationName = site.name;
+                if (phone != null) {
+                    user.phone = phone.phone;
+                }
+                if (participant.name != null) {
+                    user.name = participant.name;
+                }
+                userList.add(user);
+            } else {
+                System.out.println("Failed to create hm user with table id " + userAndSiteLoc.participant);
+            }
+        }
+        return userList;
+    }
+
+    /**
+     * @param containingFolder that is an unzipped folder with 4-5 participant JSON files
+     * @return never null, but the files within the return value may be null if not found
+     */
+    public static TableRow.ParticipantFiles findParticipantFiles(File containingFolder) {
+        TableRow.ParticipantFiles files = new TableRow.ParticipantFiles();
+
+        files.participants = findFileContaining(
+                containingFolder, CONTAINS_PARTICIPANT);
+        files.participantSiteLocations = findFileContaining(
+                containingFolder, CONTAINS_PARTICIPANT_SITE_LOC);
+        files.phone = findFileContaining(
+                containingFolder, CONTAINS_PHONE);
+        files.siteLocations = findFileContaining(
+                containingFolder, CONTAINS_SITE_LOC);
+
+        return files;
+    }
+
+    /**
+     * @param root containing the file to find
+     * @param partOfName to look for in the filename for a match
+     * @return the file if there was a match, null otherwise
+     */
+    public static @Nullable File findFileContaining(File root, String partOfName) {
+        File[] fileList = root.listFiles();
+        if (fileList == null) {
+            return null;
+        }
+        for (File file: fileList) {
+            if (file.getName().contains(partOfName)) {
+                return file;
+            }
+        }
+        return null;
     }
 
     /**
@@ -516,8 +767,22 @@ public class SynapseUtil {
         public File sessionSchedules;
     }
 
+    public static class DianParticipantFiles {
+        public FileHandleAssociation hasdParticipants;
+        public FileHandleAssociation exrParticipants;
+    }
+
+    public static class DianParticipantFileFolders {
+        public File hasdParticipants;
+        public File exrParticipants;
+    }
+
     public static class HmUserData {
         public String arcId;
+        public String phone;
+        public String name;
+        public String siteLocationEmail;
+        public String siteLocationName;
         public CompletedTestList completedTests;
         public File wakeSleepSchedule;
         public File testSessionSchedule;
@@ -580,6 +845,87 @@ public class SynapseUtil {
         public int day;
         public int session;
         public double completedOn;
+    }
+
+    /**
+     * Classes used to parse hasd and exr participant data
+     */
+    public static class TableRow {
+
+        public static SiteLocation findSiteLocation(String id, SiteLocation[] sites) {
+            for (SiteLocation site: sites) {
+                if (site.id != null && site.id.equals(id)) {
+                    return site;
+                }
+            }
+            return null;
+        }
+
+        public static Participant findParticipant(String id, Participant[] participants) {
+            for (Participant participant: participants) {
+                if (participant.id != null && participant.id.equals(id)) {
+                    return participant;
+                }
+            }
+            return null;
+        }
+
+        public static ParticipantPhone findParticipantPhone(String id, ParticipantPhone[] phoneList) {
+            for (ParticipantPhone phone: phoneList) {
+                if (phone != null && phone.participant_id.equals(id)) {
+                    return phone;
+                }
+            }
+            return null;
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public static class ParticipantFiles {
+            public File siteLocations;
+            public File participantSiteLocations;
+            public File phone;
+            public File participants;
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public static class SiteLocation {
+            // Table row ID
+            public String id;
+            // Site location name
+            public String name;
+            public String contact_phone;
+            public String contact_email;
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public static class Participant {
+            // Table row ID
+            public String id;
+            // This participant_id is actually the user's ARC ID
+            public String participant_id;
+            // Only used in QA data sets
+            public String name;
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public static class ParticipantSiteLocation {
+            // Table row ID
+            public String id;
+            // This participant is the ParticipantTableRow id field
+            public String participant;
+            // This site_location is the SiteLocationTableRow id field
+            public String site_location;
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public static class ParticipantPhone {
+            // Table row ID
+            public String id;
+            // This participant is the ParticipantTableRow id field
+            public String participant_id;
+            // Internationally formatted phone number, always starting with "+"
+            public String phone;
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

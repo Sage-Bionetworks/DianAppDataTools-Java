@@ -208,28 +208,25 @@ public class BridgeUtil {
     }
 
     /**
-     * @param sessionToken used to create non-existing users
      * @param hmUsers unique users from Happy Medium's database
      * @param bridgeUserList existing users already created on bridge
      * @return the new, sored, list of Happy Medium user to Bridge user migration pair
-     * @throws IOException if something goes wrong creating new users on bridge
      */
-    public static List<MigrationPair> createUsersToMatch(
-            String sessionToken, List<SynapseUtil.HmUserData> hmUsers,
-            List<BridgeUserData> bridgeUserList) throws IOException {
+    public static List<MigrationPair> getUsersToMatch(
+            List<SynapseUtil.HmUserData> hmUsers,
+            List<BridgeUserData> bridgeUserList) {
 
         List<MigrationPair> migrationPairList = new ArrayList<>();
 
         // Loop through and create users if they don't already exist
         for(SynapseUtil.HmUserData user: hmUsers) {
             BridgeUserData bridgeUser = getBridgeUser(user.arcId, bridgeUserList);
-            if (bridgeUser == null) {
-                bridgeUser = BridgeUtil.createUser(sessionToken, user.arcId);
+            if (bridgeUser != null) {
+                MigrationPair migration = new MigrationPair();
+                migration.hmUser = user;
+                migration.bridgeUser = bridgeUser;
+                migrationPairList.add(migration);
             }
-            MigrationPair migration = new MigrationPair();
-            migration.hmUser = user;
-            migration.bridgeUser = bridgeUser;
-            migrationPairList.add(migration);
         }
 
         migrationPairList.sort((u1, u2) ->

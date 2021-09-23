@@ -34,21 +34,16 @@ package org.sagebionetoworks.dian.datamigration;
 
 import org.sagebionetworks.client.exceptions.SynapseException;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * This executable file reads daily ZIP data exports from Synapse
- * in HM's JSON export format, parses the JSON,
- * and then uploads the data to the corresponding Bridge users.
+ * This executable file reads a ZIP of user participant files from Synapse
+ * in HM's JSON export format, and creates the users on Bridge automatically.
  *
- * This must be run AFTER the UserMigration executable to succeed.
+ * This must be run BEFORE the DataMigration executable can succeed.
  */
-public class DataMigration {
+public class UserMigration {
 
     public static void main(String[] args) {
         System.out.println("Beginning Data Migration");
@@ -56,25 +51,15 @@ public class DataMigration {
         try {
             SynapseUtil.initializeSynapse();
 
-            SynapseUtil.DianFiles files = SynapseUtil.findRelevantFiles();
-            SynapseUtil.DianFileFolders folders = SynapseUtil.downloadDianFiles(files);
+            SynapseUtil.DianParticipantFiles participantFiles =
+                    SynapseUtil.findRelevantParticipantFiles();
+            SynapseUtil.DianParticipantFileFolders participantFolders =
+                    SynapseUtil.downloadDianParticipantFiles(participantFiles);
 
-            List<SynapseUtil.HmUserData> uniqueUserData = SynapseUtil.createHmUserData(folders);
+            List<SynapseUtil.HmUserData> hmUsers =
+                    SynapseUtil.createHmUserRaterData(participantFolders);
 
-            String sessionToken = BridgeUtil.authenticate();
-            BridgeUtil.UserList bridgeUserList = BridgeUtil.getAllUsers(sessionToken);
-
-            // Match HM users to existing Bridge users, if no users
-            // are found to match, you probably need to run UserMigration first
-            List<BridgeUtil.MigrationPair> usersToMigrate =
-                    BridgeUtil.getUsersToMatch(uniqueUserData, bridgeUserList.items);
-
-            BridgeUtil.writeAllUserReports(sessionToken, usersToMigrate);
-
-            // Delete all users after creating them
-            BridgeUtil.deleteUserList(sessionToken, usersToMigrate);
-
-            System.out.println("Completed data migration\nMigrated " + uniqueUserData.size() + " accounts.");
+            // TODO: mdephillips 9/22/21 create users on bridge
 
         } catch (IOException | SynapseException e) {
             System.out.println("Failed to migrate data " + e.getLocalizedMessage());

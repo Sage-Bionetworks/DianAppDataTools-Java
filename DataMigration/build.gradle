@@ -15,6 +15,7 @@ sourceSets {
 
 dependencies {
     implementation 'org.sagebionetworks:synapseJavaClient:362.0'
+    implementation 'com.googlecode.libphonenumber:libphonenumber:8.5.2'
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.0")

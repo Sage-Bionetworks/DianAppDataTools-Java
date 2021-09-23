@@ -196,7 +196,7 @@ public class BridgeTests {
     }
 
     @Test
-    public void testCreateUsersToMatch() throws MalformedURLException, IOException {
+    public void testGetUsersToMatch() throws MalformedURLException, IOException {
         List<SynapseUtil.HmUserData> hmUserList = new ArrayList<>();
         SynapseUtil.HmUserData hmUser2 = new SynapseUtil.HmUserData();
         hmUser2.arcId = "800001";
@@ -219,29 +219,19 @@ public class BridgeTests {
         bridgeUserList.add(bridgeUser3);
 
         List<BridgeUtil.MigrationPair> migrationPairList =
-                BridgeUtil.createUsersToMatch(sessionToken, hmUserList, bridgeUserList);
+                BridgeUtil.getUsersToMatch(hmUserList, bridgeUserList);
 
         // The first one should be in ARC ID order
         assertNotNull(migrationPairList);
-        assertEquals(2, migrationPairList.size());
+        assertEquals(1, migrationPairList.size());
 
-        // Check user 1
+        // Check user 2
         assertNotNull(migrationPairList.get(0).bridgeUser);
         assertNotNull(migrationPairList.get(0).bridgeUser.id);
         assertNotNull(migrationPairList.get(0).hmUser);
-        assertEquals(testArcId, migrationPairList.get(0).bridgeUser.arcId);
-        assertEquals(testArcId, migrationPairList.get(0).hmUser.arcId);
-
-        // Check user 2
-        assertNotNull(migrationPairList.get(1).bridgeUser);
-        assertNotNull(migrationPairList.get(1).bridgeUser.id);
-        assertNotNull(migrationPairList.get(1).hmUser);
-        assertEquals("800001", migrationPairList.get(1).bridgeUser.arcId);
-        assertEquals("1234", migrationPairList.get(1).bridgeUser.id);
-        assertEquals("800001", migrationPairList.get(1).hmUser.arcId);
-
-        // Delete user
-        BridgeUtil.deleteUserList(sessionToken, Collections.singletonList(migrationPairList.get(0)));
+        assertEquals("800001", migrationPairList.get(0).bridgeUser.arcId);
+        assertEquals("1234", migrationPairList.get(0).bridgeUser.id);
+        assertEquals("800001", migrationPairList.get(0).hmUser.arcId);
     }
 
     private boolean isCompletedTestEqual(

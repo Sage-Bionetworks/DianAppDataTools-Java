@@ -81,11 +81,15 @@ public class SynapseTests {
         EntityChildrenResponse response = synapse.getEntityChildren(request);
         assertNotNull(response);
         assertNotNull(response.getPage());
-        assertEquals(1, response.getPage().size());
+        assertEquals(2, response.getPage().size());
 
         EntityHeader header = response.getPage().get(0);
         assertNotNull(header);
         assertEquals("2021-07-08", header.getName());
+
+        EntityHeader header2 = response.getPage().get(1);
+        assertNotNull(header2);
+        assertEquals("2021-09-21", header2.getName());
 
         EntityChildrenRequest subFolderRequest = new EntityChildrenRequest();
         subFolderRequest.setParentId(header.getId());
