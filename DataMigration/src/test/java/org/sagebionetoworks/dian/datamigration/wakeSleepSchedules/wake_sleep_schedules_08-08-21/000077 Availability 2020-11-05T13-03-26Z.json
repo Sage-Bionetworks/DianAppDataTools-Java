@@ -1,0 +1,47 @@
+{
+    "dates_applicable": "11\/05\/2020, 01:03:26 PM CST to 11\/04\/2020, 02:14:04 PM CST",
+    "app_version": "2.5.4",
+    "device_id": "E2A5F092-CFE3-45EA-BD52-AB44E0F58FE4",
+    "device_info": " iOS|iPhone9,2|14.1",
+    "model_version": "2.3.0",
+    "participant_id": "77",
+    "timezone_name": "America\/Chicago (current)",
+    "timezone_offset": "-6",
+    "wake_sleep_data": [
+        {
+            "bed": "4:00 PM",
+            "wake": "8:00 AM",
+            "weekday": "Sunday"
+        },
+        {
+            "bed": "4:00 PM",
+            "wake": "8:00 AM",
+            "weekday": "Monday"
+        },
+        {
+            "bed": "4:00 PM",
+            "wake": "8:00 AM",
+            "weekday": "Tuesday"
+        },
+        {
+            "bed": "4:00 PM",
+            "wake": "8:00 AM",
+            "weekday": "Wednesday"
+        },
+        {
+            "bed": "4:00 PM",
+            "wake": "8:00 AM",
+            "weekday": "Thursday"
+        },
+        {
+            "bed": "4:00 PM",
+            "wake": "8:00 AM",
+            "weekday": "Friday"
+        },
+        {
+            "bed": "4:00 PM",
+            "wake": "8:00 AM",
+            "weekday": "Saturday"
+        }
+    ]
+}

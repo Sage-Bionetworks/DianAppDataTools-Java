@@ -1,0 +1,35 @@
+[
+    {
+        "id": "1",
+        "study_id": "1",
+        "created_at": "1610144103",
+        "updated_at": "1617989032",
+        "first_name": "Rater1",
+        "rater_id_hash": "REDACTED",
+        "email": "rater1@test.edu",
+        "last_name": "r1",
+        "rater_reset_token": "REDACTED"
+    },
+    {
+        "id": "2",
+        "study_id": "1",
+        "created_at": "1613571161",
+        "updated_at": "1613571161",
+        "first_name": "Rater2",
+        "rater_id_hash": "REDACTED",
+        "email": "rater2@test.com",
+        "last_name": "R2",
+        "rater_reset_token": null
+    },
+    {
+        "id": "3",
+        "study_id": "1",
+        "created_at": "1613578978",
+        "updated_at": "1613578978",
+        "first_name": "Rater3",
+        "rater_id_hash": "REDACTED",
+        "email": "rater3@test.edu",
+        "last_name": "R3",
+        "rater_reset_token": null
+    }
+]

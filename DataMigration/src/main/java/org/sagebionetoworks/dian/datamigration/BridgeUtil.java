@@ -35,6 +35,11 @@ package org.sagebionetoworks.dian.datamigration;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.i18n.phonenumbers.NumberParseException;
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
+import com.google.i18n.phonenumbers.Phonenumber;
+
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -55,20 +60,23 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 public class BridgeUtil {
 
-    // Do not change the name of these two variables, as it is used in CI to replace the values
-    // However, to get the app to run, you must provide your own email/password,
-    // NEVER commit your credentials to github
-    public static String bridgeAdminEmail = "";
-    public static String bridgeAdminPassword = "";
+    public static String BRIDGE_EMAIL = System.getenv("BR_EMAIL");
+    public static String BRIDGE_PW = System.getenv("BR_PW");
+    private static String BRIDGE_ID = System.getenv("BR_ID");
 
-    // TODO: mdephillips 9/19/21 these will need switched to the official study created on bridge
-    private static String STUDY_ID = "dian-validation-study";
-    private static String BRIDGE_ID = "dian-validation";
-    // TODO: mdephillips 9/19/21 this will need switched to an empty array list for production
-    private static List<String> userDataGroups = Collections.singletonList("test_user");
+    // If null, users will be created with no data groups
+    private static String userDataGroup = System.getenv("BR_USER_DATA_GROUP");
+
+    public static final String US_REGION_CODE = "US";
+    public static final String US_COUNTRY_CODE = "+1";
+
+    public static String STUDY_ID_MAP_ARC_HASD = "HASD";
+    public static String STUDY_ID_DIAN_ARC_EXR = "DIAN";
+    public static String STUDY_ID_DIAN_OBS_EXR = "DIAN_OBS";
 
     public static String MIGRATED_REPORT_ID = "Migrated";
     public static String AVAILABILITY_REPORT_ID = "Availability";
@@ -104,14 +112,32 @@ public class BridgeUtil {
     }
 
     /**
+     * Uses google code phone number lib to deduce region code from phone number string
+     *
+     * @param phoneString must be in international format, starting with "+"
+     * @return region code for number, or if none found, it defaults to US
+     */
+    public static @NonNull String regionCode(String phoneString) throws NumberParseException {
+        PhoneNumberUtil phoneUtil = PhoneNumberUtil.getInstance();
+        // Phone must begin with '+', otherwise an exception will be thrown
+        Phonenumber.PhoneNumber phoneNumber = phoneUtil.parse(phoneString, null);
+        String regionCode = phoneUtil.getRegionCodeForNumber(phoneNumber);
+        if (regionCode != null) {
+            System.out.println("Could not find region code for " + phoneNumber);
+            return regionCode;
+        }
+        return US_REGION_CODE;
+    }
+
+    /**
      * @return authentication token
      * @throws MalformedURLException if sign in URL is bad
      * @throws IOException if there is an HTTP error
      */
     public static String authenticate() throws MalformedURLException, IOException {
         EmailSignIn emailSignIn = new EmailSignIn();
-        emailSignIn.email = bridgeAdminEmail;
-        emailSignIn.password = bridgeAdminPassword;
+        emailSignIn.email = BRIDGE_EMAIL;
+        emailSignIn.password = BRIDGE_PW;
         emailSignIn.appId = BRIDGE_ID;
 
         ObjectWriter ow = new ObjectMapper().writer();
@@ -165,7 +191,7 @@ public class BridgeUtil {
 
     public static UserList getAllUsers(String sessionToken) throws MalformedURLException, IOException {
 
-        List<BridgeUserData> userList = new ArrayList<>();
+        List<BridgeUser> userList = new ArrayList<>();
 
         // Create a neat value object to hold the URL
         int offsetBy = 0;
@@ -193,7 +219,7 @@ public class BridgeUtil {
         retVal.items = userList;
 
         // Post-process the data, and extract ARC ID from the attributes for phone numbers
-        for (BridgeUserData user: userList) {
+        for (BridgeUser user: userList) {
             if ((user.arcId == null || user.arcId.isEmpty()) && user.externalId != null) {
                 user.arcId = user.externalId;
             }
@@ -213,14 +239,14 @@ public class BridgeUtil {
      * @return the new, sored, list of Happy Medium user to Bridge user migration pair
      */
     public static List<MigrationPair> getUsersToMatch(
-            List<SynapseUtil.HmUserData> hmUsers,
-            List<BridgeUserData> bridgeUserList) {
+            List<MigrationUtil.HmUserData> hmUsers,
+            List<BridgeUser> bridgeUserList) {
 
         List<MigrationPair> migrationPairList = new ArrayList<>();
 
         // Loop through and create users if they don't already exist
-        for(SynapseUtil.HmUserData user: hmUsers) {
-            BridgeUserData bridgeUser = getBridgeUser(user.arcId, bridgeUserList);
+        for(MigrationUtil.HmUserData user: hmUsers) {
+            BridgeUser bridgeUser = getBridgeUser(user.arcId, bridgeUserList);
             if (bridgeUser != null) {
                 MigrationPair migration = new MigrationPair();
                 migration.hmUser = user;
@@ -239,8 +265,8 @@ public class BridgeUtil {
      * @param arcId to find in the bridge users
      * @return null if no bridge user has that arc id, the bridge user otherwise
      */
-    private static BridgeUserData getBridgeUser(String arcId, List<BridgeUserData> bridgeUserList) {
-        for (BridgeUserData user: bridgeUserList) {
+    private static BridgeUser getBridgeUser(String arcId, List<BridgeUser> bridgeUserList) {
+        for (BridgeUser user: bridgeUserList) {
             if (user.arcId != null && user.arcId.equals(arcId)) {
                 return user;
             }
@@ -260,8 +286,8 @@ public class BridgeUtil {
 
         // Now we have all the users created to upload their reports
         for (MigrationPair migration: migrationPairList) {
-            BridgeUserData bridgeUser = migration.bridgeUser;
-            SynapseUtil.HmUserData hmUser = migration.hmUser;
+            BridgeUser bridgeUser = migration.bridgeUser;
+            MigrationUtil.HmUserData hmUser = migration.hmUser;
 
             if (shouldMigrate(sessionToken, bridgeUser)) {
                 List<String> reportIds = new ArrayList<>();
@@ -275,13 +301,13 @@ public class BridgeUtil {
                     reportIds.add(COMPLETED_TESTS_REPORT_ID);
                 }
                 if (hmUser.testSessionSchedule != null) {
-                    String json = readFile(hmUser.testSessionSchedule);
+                    String json = FileHelper.readFile(hmUser.testSessionSchedule);
                     writeSingletonReport(sessionToken, bridgeUser.id,
                             TEST_SCHEDULE_REPORT_ID, json);
                     reportIds.add(TEST_SCHEDULE_REPORT_ID);
                 }
                 if (hmUser.wakeSleepSchedule != null) {
-                    String json = readFile(hmUser.wakeSleepSchedule);
+                    String json = FileHelper.readFile(hmUser.wakeSleepSchedule);
                     writeSingletonReport(sessionToken, bridgeUser.id,
                             AVAILABILITY_REPORT_ID, json);
                     reportIds.add(AVAILABILITY_REPORT_ID);
@@ -295,43 +321,12 @@ public class BridgeUtil {
     }
 
     public static boolean shouldMigrate(
-            String sessionToken, BridgeUserData bridgeUser) throws IOException {
+            String sessionToken, BridgeUser bridgeUser) throws IOException {
 
         MigratedStatus isMigrated = getSingletonReport(sessionToken,
                 MIGRATED_REPORT_ID, bridgeUser.id, MigratedStatus.class);
 
         return isMigrated == null || !isMigrated.status;
-    }
-
-    /**
-     * @param file containing text
-     * @return the string contents of the file
-     * @throws IOException if somethings goes wrong
-     */
-    private static String readFile(File file) throws IOException {
-        byte[] encoded = Files.readAllBytes(Paths.get(file.getAbsolutePath()));
-        return new String(encoded, StandardCharsets.UTF_8);
-    }
-
-    private static String raterId(String arcId) {
-        // TODO: mdephillips 9/19/21 make this a look up table
-        if(arcId.equals("000000")) {
-            return null;
-        }
-        return "819594";
-    }
-
-    private static String phoneNum(String arcId) {
-        // TODO: mdephillips 9/19/21 make this a look up table
-        if(arcId.equals("000000")) {
-            return "+14127208453";
-        }
-        return null;
-    }
-
-    private static String regionCode(String phoneNum) {
-        // TODO: mdephillips 9/19/21 make this a look up table
-        return "US";
     }
 
     /**
@@ -351,26 +346,100 @@ public class BridgeUtil {
     }
 
     /**
+     * @param sessionToken to create the users
+     * @param hmUsers to create on bridge
+     * @return the bridge user data models for all users that were successfully created
+     */
+    public static List<BridgeUser> createUsersOnBridge(
+            String sessionToken, List<MigrationUtil.HmUser> hmUsers)
+            throws IOException, NumberParseException {
+
+        List<BridgeUser> bridgeUsers = new ArrayList<>();
+        Map<String, List<MigrationUtil.HmUser>> raterUserMap = new HashMap<>();
+
+        // Build rater email to user list so we can group user passwords by rater id
+        for (MigrationUtil.HmUser hmUser: hmUsers) {
+            if (isValidUser(hmUser)) {
+                List<MigrationUtil.HmUser> userList = raterUserMap.get(hmUser.raterEmail);
+                if (userList == null) {
+                    userList = new ArrayList<>();
+                }
+                userList.add(hmUser);
+                raterUserMap.put(hmUser.raterEmail, userList);
+            }
+        }
+
+        int raterCount = raterUserMap.keySet().size();
+        List<String> raterIdList = MigrationUtil.assignUniqueRaterIds(raterCount);
+
+        int i = 0;
+        for (String raterEmail: raterUserMap.keySet()) {
+            String raterId = raterIdList.get(i);
+            List<MigrationUtil.HmUser> users = raterUserMap.get(raterEmail);
+            for (MigrationUtil.HmUser userToCreate: users) {
+                BridgeUser bridgeUser = createUser(sessionToken, raterId, userToCreate);
+                if (bridgeUser != null) {
+                    bridgeUsers.add(bridgeUser);
+                }
+            }
+            i++;
+        }
+
+        return bridgeUsers;
+    }
+
+    public static boolean isValidUser(MigrationUtil.HmUser user) {
+        boolean validUser = true;
+        String arcID = user.arcId;
+        if (arcID == null) {
+            System.out.print("Could not create user with null arc id");
+            validUser = false;
+        }
+
+        if (user.studyId == null) {
+            System.out.print("Could not create user " + arcID + " with null study id ");
+            validUser = false;
+        }
+
+        if (user.raterEmail == null) {
+            System.out.print("Could not create user " + arcID + " with null rater email");
+            validUser = false;
+        }
+        return validUser;
+    }
+
+    /**
      * @param sessionToken used to create the user
-     * @param arcID of the user, which will sign up with phone num or external ID
      * @return the UserData as reflected by a successful user sign up
      * @throws IOException if we fail to create a user on bridge
      */
-    public static BridgeUserData createUser(String sessionToken, String arcID) throws IOException {
-        String raterId = raterId(arcID);
-        if (raterId == null) {
-            String phoneNum = phoneNum(arcID);
-            String regionCode = regionCode(phoneNum);
-            return createPhoneNumberUser(sessionToken, arcID, phoneNum, regionCode);
+    public static BridgeUser createUser(
+            String sessionToken, String raterId, MigrationUtil.HmUser hmUser)
+            throws IOException, NumberParseException {
+
+        if (!isValidUser(hmUser)) {
+            return null;
         }
+
+        if (hmUser.phone != null) {
+            return createPhoneNumberUser(sessionToken, hmUser);
+        }
+
+        String arcID = hmUser.arcId;
 
         SignupArcAndRaterIdUserData user = new SignupArcAndRaterIdUserData();
         UserArcIdAttributes attributes = new UserArcIdAttributes();
         attributes.ARC_ID = arcID;
+        attributes.RATER_EMAIL = hmUser.raterEmail;
         user.attributes = attributes;
-        user.externalId = arcID;
         user.externalIds = new HashMap<>();
-        user.externalIds.put(STUDY_ID, arcID);
+
+        user.externalIds.put(hmUser.studyId, arcID);
+
+        if (userDataGroup != null) {
+            user.dataGroups = Collections.singletonList(userDataGroup);
+        }
+
         user.password = raterId;
 
         String json = new ObjectMapper().writer().writeValueAsString(user);
@@ -382,7 +451,7 @@ public class BridgeUtil {
             throw new IOException("Failed to create bridge user and get userID for ARC ID " + arcID);
         }
 
-        BridgeUserData bridgeUser = new BridgeUserData();
+        BridgeUser bridgeUser = new BridgeUser();
         bridgeUser.id = bridgeResponse.identifier;
         bridgeUser.arcId = arcID;
         bridgeUser.attributes = attributes;
@@ -395,24 +464,38 @@ public class BridgeUtil {
 
     /**
      * @param sessionToken to create the user with phone number
-     * @param arcId of the user
-     * @param phoneNum of the user
-     * @param regionCode of the user
+     * @param hmUser to create on bridge
      * @return the UserData as reflected by a successful user sign up
      * @throws IOException if we fail to create a user on bridge
      */
-    private static BridgeUserData createPhoneNumberUser(
-            String sessionToken, String arcId, String phoneNum, String regionCode)
-            throws IOException {
+    private static BridgeUser createPhoneNumberUser(
+            String sessionToken, MigrationUtil.HmUser hmUser) throws IOException, NumberParseException {
+
+        if (!isValidUser(hmUser) || hmUser.phone == null) {
+            return null;
+        }
+
+        String arcId = hmUser.arcId;
+        String phoneNum = hmUser.phone;
+        String regionCode = regionCode(phoneNum);
 
         SignupPhoneUserData user = new SignupPhoneUserData();
         UserPhoneData phone = new UserPhoneData();
         phone.regionCode = regionCode;
         phone.number = phoneNum;
         user.phone = phone;
+
+        user.studyIds = new ArrayList<>();
+        user.studyIds.add(hmUser.studyId);
+
         UserArcIdAttributes attributes = new UserArcIdAttributes();
         attributes.ARC_ID = arcId;
+        attributes.RATER_EMAIL = hmUser.raterEmail;
         user.attributes = attributes;
+
+        if (userDataGroup != null) {
+            user.dataGroups = Collections.singletonList(userDataGroup);
+        }
 
         String json = new ObjectMapper().writer().writeValueAsString(user);
         String response = bridgePOST(bridgeUrl(participants), sessionToken, json);
@@ -423,7 +506,7 @@ public class BridgeUtil {
             throw new IOException("Failed to create bridge user and get userID for ARC ID " + arcId);
         }
 
-        BridgeUserData bridgeUser = new BridgeUserData();
+        BridgeUser bridgeUser = new BridgeUser();
         bridgeUser.id = bridgeResponse.identifier;
         bridgeUser.arcId = arcId;
         bridgeUser.attributes = attributes;
@@ -490,8 +573,8 @@ public class BridgeUtil {
     }
 
     public static class MigrationPair {
-        public SynapseUtil.HmUserData hmUser;
-        public BridgeUserData bridgeUser;
+        public MigrationUtil.HmUserData hmUser;
+        public BridgeUser bridgeUser;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -501,7 +584,7 @@ public class BridgeUtil {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class UserList {
-        public List<BridgeUserData> items;
+        public List<BridgeUser> items;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -511,7 +594,7 @@ public class BridgeUtil {
         public String password;
         public UserArcIdAttributes attributes;
         public String sharingScope = "all_qualified_researchers";
-        public List<String> dataGroups = userDataGroups;
+        public List<String> dataGroups;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -524,16 +607,18 @@ public class BridgeUtil {
         public UserPhoneData phone;
         public UserArcIdAttributes attributes;
         public String sharingScope = "all_qualified_researchers";
-        public List<String> dataGroups = userDataGroups;
+        public List<String> dataGroups;
+        public List<String> studyIds;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class BridgeUserData {
+    public static class BridgeUser {
         public UserPhoneData phone;
         public UserArcIdAttributes attributes;
         public String arcId;
         public String externalId;
         public String id;
+        public List<String> studyIds;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -550,6 +635,7 @@ public class BridgeUtil {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class UserArcIdAttributes {
         public String ARC_ID;
+        public String RATER_EMAIL;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

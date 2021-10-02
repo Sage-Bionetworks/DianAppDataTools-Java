@@ -1,0 +1,45 @@
+{
+    "dates_applicable": "08\/29\/2019, 04:06:11 PM CDT to 10\/22\/2019, 02:21:59 PM CDT",
+    "app_version": "2.0.0",
+    "device_id": "8491bf3f-e646-4a8e-aaae-84319f9d6e6e",
+    "device_info": "Android|Samsung SM-G935U|8.0.0|26|samsung\/hero2qlteue\/hero2qlteue:8.0.0\/R16NW\/G935UUES4CRG3:user\/release-keys",
+    "model_version": "0",
+    "participant_id": "000000",
+    "wakeSleepData": [
+        {
+            "bed": "5:00 PM",
+            "wake": "9:00 AM",
+            "weekday": "Sunday"
+        },
+        {
+            "bed": "5:00 PM",
+            "wake": "9:00 AM",
+            "weekday": "Monday"
+        },
+        {
+            "bed": "5:00 PM",
+            "wake": "9:00 AM",
+            "weekday": "Tuesday"
+        },
+        {
+            "bed": "5:00 PM",
+            "wake": "9:00 AM",
+            "weekday": "Wednesday"
+        },
+        {
+            "bed": "5:00 PM",
+            "wake": "9:00 AM",
+            "weekday": "Thursday"
+        },
+        {
+            "bed": "5:00 PM",
+            "wake": "9:00 AM",
+            "weekday": "Friday"
+        },
+        {
+            "bed": "5:00 PM",
+            "wake": "9:00 AM",
+            "weekday": "Saturday"
+        }
+    ]
+}
