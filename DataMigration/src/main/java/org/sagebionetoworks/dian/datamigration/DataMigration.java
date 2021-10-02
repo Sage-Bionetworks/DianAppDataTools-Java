@@ -86,14 +86,15 @@ public class DataMigration {
     private static void runUserMigration() throws SynapseException, IOException {
         System.out.println("Beginning User Migration");
 
-        SynapseUtil.initializeSynapse();
-        SynapseUtil.downloadAndUnzipAllParticipantFiles();
-
-        List<File> folders = new ArrayList<>();
-        for (SynapseUtil.DownloadFolder downloadFolder : SynapseUtil.DownloadFolder.userFolders()) {
-            folders.add(downloadFolder.unzippedFolder());
-        }
-        List<MigrationUtil.HmUser> hmUsers = MigrationUtil.createHmUserRaterData(folders);
+        // TODO: mdephillips 10/2/21 testing docker build, uncomment after
+//        SynapseUtil.initializeSynapse();
+//        SynapseUtil.downloadAndUnzipAllParticipantFiles();
+//
+//        List<File> folders = new ArrayList<>();
+//        for (SynapseUtil.DownloadFolder downloadFolder : SynapseUtil.DownloadFolder.userFolders()) {
+//            folders.add(downloadFolder.unzippedFolder());
+//        }
+//        List<MigrationUtil.HmUser> hmUsers = MigrationUtil.createHmUserRaterData(folders);
 
         // TODO: mdephillips 9/22/21 create users on bridge
         System.out.println("Completed user migration successfully");
@@ -110,20 +111,21 @@ public class DataMigration {
     private static void runDataMigration() throws SynapseException, IOException {
         System.out.println("Beginning Data Migration");
 
-        SynapseUtil.initializeSynapse();
-        SynapseUtil.downloadAndUnzipAllUserDataFiles();
-        List<MigrationUtil.HmUserData> uniqueUserData = MigrationUtil.createHmUserData(
-                SynapseUtil.DownloadFolder.test_session.unzippedFolder(),
-                SynapseUtil.DownloadFolder.test_session_schedule.unzippedFolder(),
-                SynapseUtil.DownloadFolder.wake_sleep_schedule.unzippedFolder());
-
-        String sessionToken = BridgeUtil.authenticate();
-        BridgeUtil.UserList bridgeUserList = BridgeUtil.getAllUsers(sessionToken);
-
-        // Match HM users to existing Bridge users, if no users
-        // are found to match, you probably need to run UserMigration first
-        List<BridgeUtil.MigrationPair> usersToMigrate =
-                BridgeUtil.getUsersToMatch(uniqueUserData, bridgeUserList.items);
+        // TODO: mdephillips 10/2/21 testing docker build, uncomment after
+//        SynapseUtil.initializeSynapse();
+//        SynapseUtil.downloadAndUnzipAllUserDataFiles();
+//        List<MigrationUtil.HmUserData> uniqueUserData = MigrationUtil.createHmUserData(
+//                SynapseUtil.DownloadFolder.test_session.unzippedFolder(),
+//                SynapseUtil.DownloadFolder.test_session_schedule.unzippedFolder(),
+//                SynapseUtil.DownloadFolder.wake_sleep_schedule.unzippedFolder());
+//
+//        String sessionToken = BridgeUtil.authenticate();
+//        BridgeUtil.UserList bridgeUserList = BridgeUtil.getAllUsers(sessionToken);
+//
+//        // Match HM users to existing Bridge users, if no users
+//        // are found to match, you probably need to run UserMigration first
+//        List<BridgeUtil.MigrationPair> usersToMigrate =
+//                BridgeUtil.getUsersToMatch(uniqueUserData, bridgeUserList.items);
 
         // TODO: mdephillips 9/22/21 write all user reports to bridge,
         // TODO: mdephillips 9/22/21 holding off for now until user migration algo is complete
