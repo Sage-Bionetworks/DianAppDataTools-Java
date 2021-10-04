@@ -31,6 +31,8 @@
  */
 package org.sagebionetoworks.dian.datamigration;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.util.Strings;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.File;
@@ -88,8 +90,8 @@ public class FileHelper {
         if (fileList == null) {
             return null;
         }
+        System.out.println("Full file list for " + root.getName() + " is " + StringUtils.join(fileList, ", "));
         for (File file: fileList) {
-            System.out.println("Checking file " + file.getName());
             if (file.getName().contains(partOfName)) {
                 return file;
             }
