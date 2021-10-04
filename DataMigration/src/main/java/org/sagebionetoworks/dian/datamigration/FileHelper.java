@@ -89,6 +89,7 @@ public class FileHelper {
             return null;
         }
         for (File file: fileList) {
+            System.out.println("Checking file " + file.getName());
             if (file.getName().contains(partOfName)) {
                 return file;
             }
