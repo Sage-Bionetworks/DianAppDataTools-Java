@@ -90,7 +90,6 @@ public class FileHelper {
         if (fileList == null) {
             return null;
         }
-        System.out.println("Full file list for " + root.getName() + " is " + StringUtils.join(fileList, ", "));
         for (File file: fileList) {
             if (file.getName().contains(partOfName)) {
                 return file;
