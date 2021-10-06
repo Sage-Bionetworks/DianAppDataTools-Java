@@ -1,2 +1,3 @@
+include ':UserMigration'
 include ':DataMigration'
 rootProject.name = "DataMigration"

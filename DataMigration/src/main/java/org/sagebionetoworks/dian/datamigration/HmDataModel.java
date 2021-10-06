@@ -116,6 +116,25 @@ public class HmDataModel {
             public String name;
             public String contact_phone;
             public String contact_email;
+
+            public SiteLocation() {}
+            public SiteLocation(String id, String name) {
+                this.id = id;
+                this.name = name;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (o instanceof SiteLocation) {
+                    return id != null && id.equals(((SiteLocation)o).id);
+                }
+                return false;
+            }
+
+            @Override
+            public int hashCode() {
+                return id.hashCode();
+            }
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -289,5 +308,26 @@ public class HmDataModel {
             this.session = session;
             this.completedOn = completedOn;
         }
+    }
+
+    /**
+     * This class is used to compile the need to know data
+     * about a Happy Medium user, all in one data class
+     */
+    public static class HmUser {
+        public String arcId;
+        public String studyId;
+        public String phone;
+        public String name;
+        public String password;
+        public TableRow.SiteLocation siteLocation;
+        public TableRow.Rater rater;
+    }
+
+    public static class HmUserData {
+        public String arcId;
+        public HmDataModel.CompletedTestList completedTests;
+        public File wakeSleepSchedule;
+        public File testSessionSchedule;
     }
 }

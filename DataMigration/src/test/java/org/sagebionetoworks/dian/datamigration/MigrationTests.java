@@ -48,6 +48,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.sagebionetoworks.dian.datamigration.BridgeUtil.*;
 import static org.sagebionetoworks.dian.datamigration.MigrationUtil.*;
+import static org.sagebionetoworks.dian.datamigration.HmDataModel.*;
 
 public class MigrationTests {
 
@@ -147,19 +148,19 @@ public class MigrationTests {
 
      @Test
     public void test_createHmUserRaterData() throws IOException {
-        List<MigrationUtil.HmUser> users = MigrationUtil
+        List<HmUser> users = MigrationUtil
                 .createHmUserRaterData(Lists.newArrayList(rootParticipantsFolder));
         assertNotNull(users);
         assertEquals(6, users.size());
 
-        MigrationUtil.HmUser user = users.get(0);
+        HmUser user = users.get(0);
         assertEquals("000001", user.arcId);
         assertEquals("EXR_Test1", user.name);
         assertEquals(STUDY_ID_DIAN_ARC_EXR, user.studyId);
         assertNotNull(user.phone);
         assertEquals("+11111111111", user.phone);
-        assertEquals("rater1@test.edu", user.raterEmail);
-        assertEquals("1-WashU", user.siteLocationName);
+        assertEquals("rater1@test.edu", user.rater.email);
+        assertEquals("1-WashU", user.siteLocation.name);
 
         user = users.get(1);
         assertEquals("000002", user.arcId);
@@ -167,40 +168,40 @@ public class MigrationTests {
         assertEquals(STUDY_ID_DIAN_ARC_EXR, user.studyId);
         assertNotNull(user.phone);
         assertEquals("+12222222222", user.phone);
-        assertEquals("rater1@test.edu", user.raterEmail);
-        assertEquals("1-WashU", user.siteLocationName);
+        assertEquals("rater1@test.edu", user.rater.email);
+        assertEquals("1-WashU", user.siteLocation.name);
 
         user = users.get(2);
         assertEquals("200007", user.arcId);
         assertEquals("HASD_Test2", user.name);
         assertEquals(STUDY_ID_MAP_ARC_HASD, user.studyId);
         assertNull(user.phone);
-        assertEquals("rater2@test.com", user.raterEmail);
-        assertEquals("2-SDP", user.siteLocationName);
+        assertEquals("rater2@test.com", user.rater.email);
+        assertEquals("2-SDP", user.siteLocation.name);
 
         user = users.get(3);
         assertEquals("555555", user.arcId);
         assertEquals("HASD_Test1", user.name);
         assertEquals(STUDY_ID_MAP_ARC_HASD, user.studyId);
         assertNull(user.phone);
-        assertEquals("rater2@test.com", user.raterEmail);
-        assertEquals("2-SDP", user.siteLocationName);
+        assertEquals("rater2@test.com", user.rater.email);
+        assertEquals("2-SDP", user.siteLocation.name);
 
         user = users.get(4);
         assertEquals("626017", user.arcId);
         assertEquals("OBS_Test1", user.name);
         assertEquals(STUDY_ID_DIAN_OBS_EXR, user.studyId);
         assertNull(user.phone);
-        assertEquals("rater3@test.edu", user.raterEmail);
-        assertEquals("3-Sage", user.siteLocationName);
+        assertEquals("rater3@test.edu", user.rater.email);
+        assertEquals("3-Sage", user.siteLocation.name);
 
         user = users.get(5);
         assertEquals("999999", user.arcId);
         assertEquals("NoRaterYet", user.name);
         assertEquals(STUDY_ID_MAP_ARC_HASD, user.studyId);
         assertNull(user.phone);
-        assertEquals(NO_RATER_ASSIGNED_YET_EMAIL, user.raterEmail);
-        assertEquals("3-Sage", user.siteLocationName);
+        assertEquals(NO_RATER_ASSIGNED_YET_EMAIL, user.rater.email);
+        assertEquals("3-Sage", user.siteLocation.name);
     }
 
     @Test

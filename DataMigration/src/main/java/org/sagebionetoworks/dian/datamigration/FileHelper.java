@@ -58,12 +58,12 @@ public class FileHelper {
     }
 
     /**
-     * @param json to write to the file
+     * @param data to write to the file
      * @param file where to save the json file
      * @throws IOException if something goes wrong writing the file
      */
-    public static void writeToFile(String json, File file) throws IOException {
-        byte[] jsonBytes = json.getBytes(StandardCharsets.UTF_8);
+    public static void writeToFile(String data, File file) throws IOException {
+        byte[] jsonBytes = data.getBytes(StandardCharsets.UTF_8);
         Files.write(Paths.get(file.getAbsolutePath()), jsonBytes);
     }
 

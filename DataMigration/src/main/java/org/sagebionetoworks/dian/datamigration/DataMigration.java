@@ -37,68 +37,16 @@ import org.sagebionetworks.client.exceptions.SynapseException;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import org.sagebionetoworks.dian.datamigration.HmDataModel.*;
 
 /**
  * Main executable class for the data migration from HappyMedium to Sage Bionetworks
  */
 public class DataMigration {
-
-    private static final String USER_ARG = "user";
-    private static final String DATA_ARG = "data";
-
-    public static void main(String[] args) throws IOException, SynapseException {
-        if (args.length == 0) {
-            illegalArguments();
-        }
-
-        try {
-            if ("user".equals(args[0])) {
-                runUserMigration();
-            } else if ("data".equals(args[0])) {
-                runDataMigration();
-            } else {
-                illegalArguments();
-            }
-        } finally {
-            // Delete all traces of the algorithm.
-            // This is for enhanced data privacy,
-            // to ensure user data does not remain in the environment.
-            SynapseUtil.clearAllFiles();
-        }
-    }
-
-    private static void illegalArguments() {
-        throw new IllegalArgumentException(
-                "\nError: valid argument must be provided.\n" +
-                "Available options include:\n" +
-                "\"" + USER_ARG + "\" to run the user migration\n" +
-                "or \"" + DATA_ARG + "\" to run the data migration.");
-    }
-
-    /**
-     * This function reads a ZIP of user participant files from Synapse
-     * in HM's JSON export format, and creates all the users on Bridge.
-     *
-     * This must be run BEFORE the DataMigration executable can succeed,
-     * as there will be no users to write the user reports to otherwise.
-     */
-    private static void runUserMigration() throws SynapseException, IOException {
-        System.out.println("Beginning User Migration");
-
-        // TODO: mdephillips 10/2/21 testing docker build, uncomment after
-//        SynapseUtil.initializeSynapse();
-//        SynapseUtil.downloadAndUnzipAllParticipantFiles();
-//
-//        List<File> folders = new ArrayList<>();
-//        for (SynapseUtil.DownloadFolder downloadFolder : SynapseUtil.DownloadFolder.userFolders()) {
-//            folders.add(downloadFolder.unzippedFolder());
-//        }
-//        List<MigrationUtil.HmUser> hmUsers = MigrationUtil.createHmUserRaterData(folders);
-
-        // TODO: mdephillips 9/22/21 create users on bridge
-        System.out.println("Completed user migration successfully");
-    }
 
     /**
      * This function reads daily ZIP data exports from Synapse
@@ -108,6 +56,17 @@ public class DataMigration {
      * This must be run AFTER the UserMigration functions succeeds,
      * as there will be no users to write the user reports to otherwise.
      */
+    public static void main(String[] args) throws IOException, SynapseException {
+        try {
+             runDataMigration();
+        } finally {
+            // Delete all traces of the algorithm.
+            // This is for enhanced data privacy,
+            // to ensure user data does not remain in the environment.
+            SynapseUtil.clearAllFiles();
+        }
+    }
+
     private static void runDataMigration() throws SynapseException, IOException {
         System.out.println("Beginning Data Migration");
 

@@ -35,6 +35,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.commons.lang3.StringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.sagebionetoworks.dian.datamigration.HmDataModel.*;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -47,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+
 
 public class MigrationUtil {
 
@@ -299,7 +301,7 @@ public class MigrationUtil {
 
         List<HmUser> data = new ArrayList<>();
 
-        for (File folder: participantJsonFolder) {
+        for (File folder : participantJsonFolder) {
 
             ObjectMapper mapper = new ObjectMapper();
             List<HmUser> userList = new ArrayList<>();
@@ -338,7 +340,7 @@ public class MigrationUtil {
                 System.out.println("Successfully parsed " + files.phone.getName());
             }
 
-            for (HmDataModel.TableRow.Participant user: participantList) {
+            for (HmDataModel.TableRow.Participant user : participantList) {
                 HmDataModel.TableRow.SiteLocation site = HmDataModel.TableRow
                         .findSiteLocation(user.id, userAndSiteLocList, siteLocList);
                 HmDataModel.TableRow.Participant participant = HmDataModel.TableRow
@@ -350,17 +352,16 @@ public class MigrationUtil {
 
                 HmUser userMatch = new HmUser();
                 userMatch.arcId = participant.participant_id;
-                userMatch.siteLocationName = site.name;
+
+                // In production, site should never be null,
+                // but the staging server has accounts without a valid site location
+                userMatch.siteLocation = site;
 
                 // If the rater is null at this point,
                 // that means HM has created the user,
                 // but they have not yet signed in.
                 // Therefore, there is nothing to migrate.
-                if (rater == null) {
-                    userMatch.raterEmail = NO_RATER_ASSIGNED_YET_EMAIL;
-                } else {
-                    userMatch.raterEmail = rater.email;
-                }
+                userMatch.rater = rater;
 
                 // HASD users do not have phone numbers,
                 // they only have Arc ID, and their pw is their RaterID
@@ -381,7 +382,12 @@ public class MigrationUtil {
                     userMatch.studyId = BridgeUtil.STUDY_ID_DIAN_ARC_EXR;
                 } else if (participant.study_id.equals(HmDataModel.TableRow.STUDY_ID_DIAN_OBS_EXR)) {
                     userMatch.studyId = BridgeUtil.STUDY_ID_DIAN_OBS_EXR;
+                } else {
+                    userMatch.studyId = participant.study_id;
                 }
+
+                // Assign the user a random password
+                userMatch.password = SecureTokenGenerator.BRIDGE_PASSWORD.nextBridgePassword();
 
                 System.out.println("Successfully added user with table row id " + participant.id);
                 userList.add(userMatch);
@@ -397,51 +403,83 @@ public class MigrationUtil {
     }
 
     /**
-     * @param count the number of unique rater IDs to create
-     * @return a list with size equal to count of unique rater IDs
+     * @param userList to organize by site location
+     * @param missingSiteId the site location to be used, when the user is not associated with one
+     * @return the user lists mapped to site location
      */
-    public static List<String> assignUniqueRaterIds(int count) {
-        List<String> raterIdList = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            String raterId = getRandomNumberString();
-            while(raterIdList.contains(raterId)) {
-                raterId = getRandomNumberString();
+    public static Map<TableRow.SiteLocation, List<HmUser>>
+        organizeBySiteLocation(List<HmUser> userList, String missingSiteId) {
+
+        TableRow.SiteLocation missingSiteLocation =
+                new TableRow.SiteLocation(missingSiteId, missingSiteId);
+
+        Map<TableRow.SiteLocation, List<HmUser>> siteLocationUsers = new HashMap<>();
+
+        for (HmUser user: userList) {
+            TableRow.SiteLocation site = user.siteLocation;
+            if (site == null) {
+                site = missingSiteLocation;
             }
-            raterIdList.add(raterId);
+            List<HmUser> usersAtSite = siteLocationUsers.get(site);
+            if (usersAtSite == null) {
+                usersAtSite = new ArrayList<>();
+            }
+            usersAtSite.add(user);
+            siteLocationUsers.put(site, usersAtSite);
         }
-        return raterIdList;
+        return siteLocationUsers;
     }
 
     /**
-     * @return a unique 6 digit string
+     * Creates a CSV file for user credentials for each site location.
+     * The format of the CSV matches the LastPass credential store import format
+     * https://support.logmeininc.com/lastpass/help/how-do-i-import-stored-data-into-lastpass-using-a-generic-csv-file
+     *
+     * These files are stored in the project's root directory on your computer,
+     * and contain user passwords in plain text.
+     *
+     * It is critical the files are never uploaded anywhere besides LastPass
+     * and once they are, they should be deleted from the user's computer.
+     *
+     * CSV Format Example:
+     * url,username,password,extra,name,grouping,fav,,
+     * HASD,111111,abcde-fghijk-lmnop-qrstu-v,,111111,SiteAImport,0,,
+     * HASD,222222,abcde-fghijk-lmnop-qrstu-v,,222222,SiteAImport,0,,
+     * HASD,3333333,abcde-fghijk-lmnop-qrstu-v,,333333,SiteAImport,0,,
+     *
+     * @param usersBySite users grouped by site location
      */
-    public static String getRandomNumberString() {
-        // It will generate 6 digit random Number.
-        // from 0 to 999999
-        Random rnd = new Random();
-        int number = rnd.nextInt(999999);
+    public static void createAndSaveLastPassCsvImport(
+        Map<HmDataModel.TableRow.SiteLocation, List<HmDataModel.HmUser>> usersBySite)
+            throws IOException {
 
-        // this will convert any number sequence into 6 character.
-        return String.format("%06d", number);
-    }
+        File root = new File("Credentials");
+        FileHelper.createFolderIfNecessary(root);
 
-    /**
-     * This class is used to compile the need to know data
-     * about a Happy Medium user, all in one data class
-     */
-    public static class HmUser {
-        public String arcId;
-        public String studyId;
-        public String phone;
-        public String name;
-        public String siteLocationName;
-        public String raterEmail;
-    }
+        for (TableRow.SiteLocation site: usersBySite.keySet()) {
+            List<HmDataModel.HmUser> userList = usersBySite.get(site);
+            StringBuilder csvData = new StringBuilder();
+            csvData.append("url,username,password,extra,name,grouping,fav,,\n");
 
-    public static class HmUserData {
-        public String arcId;
-        public HmDataModel.CompletedTestList completedTests;
-        public File wakeSleepSchedule;
-        public File testSessionSchedule;
+            for (HmUser user: userList) {
+                // URL for app deep link will follow the format
+                // https://sagebionetworks.org/STUDY_ID/mobile-auth
+                csvData.append("https://sagebionetworks.org/");
+                csvData.append(user.studyId);
+                csvData.append("/mobile-auth,");
+                csvData.append(user.arcId); // username
+                csvData.append(",");
+                csvData.append(user.password);
+                csvData.append(",,");
+                csvData.append(user.arcId); // credential name
+                csvData.append(",");
+                csvData.append(site.name); // LastPass Folder name, by site
+                csvData.append(",0,,\n");
+            }
+
+            String csvFilename = File.separator + site.name + ".csv";
+            File file = new File(root.getAbsolutePath() + csvFilename);
+            FileHelper.writeToFile(csvData.toString(), file);
+        }
     }
 }

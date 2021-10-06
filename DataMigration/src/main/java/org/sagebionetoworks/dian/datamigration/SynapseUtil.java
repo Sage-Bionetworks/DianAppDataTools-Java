@@ -174,12 +174,15 @@ public class SynapseUtil {
                     entityHeaderList, downloadFolder.name(), PARTICIPANT_FILE_SUFFIX);
             FileHandleAssociation file = createFileHandlAssociation(zipEntity);
 
-            System.out.println("Downloading file " + file.getAssociateObjectId() + ".zip");
-            File downloadFolderFile = downloadFolder.downloadFolder();
-            synapse.downloadFile(file, downloadFolderFile);
+            String downloadFileName = file.getAssociateObjectId() + ".zip";
+            System.out.println("Downloading file " + downloadFileName);
+            File downloadFile = new File(
+                    downloadFolder.downloadFolder().getAbsoluteFile() +
+                    File.separator + downloadFileName);
+            synapse.downloadFile(file, downloadFile);
 
             System.out.println("Unzipping file " + file.getAssociateObjectId() + ".zip");
-            UnzipUtil.unzip(downloadFolderFile.getAbsolutePath(),
+            UnzipUtil.unzip(downloadFile.getAbsolutePath(),
                     downloadFolder.unzippedFolder().getAbsolutePath());
         }
     }

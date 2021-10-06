@@ -32,36 +32,30 @@
 
 package org.sagebionetoworks.dian.datamigration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.i18n.phonenumbers.NumberParseException;
+import org.sagebionetoworks.dian.datamigration.HmDataModel.*;
 
-import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 public class BridgeUtilTests {
 
-    private String testArcId = "800000";
+    private final String testArcId = "800000";
 
     @Test
     public void testGetUsersToMatch() throws MalformedURLException, IOException {
-        List<MigrationUtil.HmUserData> hmUserList = new ArrayList<>();
-        MigrationUtil.HmUserData hmUser2 = new MigrationUtil.HmUserData();
+        List<HmUserData> hmUserList = new ArrayList<>();
+        HmUserData hmUser2 = new HmUserData();
         hmUser2.arcId = "800001";
         hmUserList.add(hmUser2);
 
-        MigrationUtil.HmUserData hmUser1 = new MigrationUtil.HmUserData();
+        HmUserData hmUser1 = new HmUserData();
         hmUser1.arcId = testArcId;
         hmUserList.add(hmUser1);
 

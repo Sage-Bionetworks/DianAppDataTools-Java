@@ -1,0 +1,26 @@
+plugins {
+    id 'java-library'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+sourceSets {
+    test {
+        java.srcDirs <<= 'testSrc'
+    }
+}
+
+dependencies {
+    implementation project(':DataMigration')
+    implementation 'org.sagebionetworks:synapseJavaClient:362.0'
+}
+
+jar {
+    manifest {
+        attributes("Main-Class": "org.sagebionetoworks.dian.usermigration.UserMigration")
+    }
+    from { configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+}
