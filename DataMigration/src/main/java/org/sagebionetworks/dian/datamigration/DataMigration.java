@@ -30,18 +30,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.sagebionetoworks.dian.datamigration;
+package org.sagebionetworks.dian.datamigration;
 
 import org.sagebionetworks.client.exceptions.SynapseException;
+import org.sagebionetworks.dian.datamigration.HmDataModel.*;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import org.sagebionetoworks.dian.datamigration.HmDataModel.*;
 
 /**
  * Main executable class for the data migration from HappyMedium to Sage Bionetworks
@@ -71,20 +66,20 @@ public class DataMigration {
         System.out.println("Beginning Data Migration");
 
         // TODO: mdephillips 10/2/21 testing docker build, uncomment after
-//        SynapseUtil.initializeSynapse();
-//        SynapseUtil.downloadAndUnzipAllUserDataFiles();
-//        List<MigrationUtil.HmUserData> uniqueUserData = MigrationUtil.createHmUserData(
-//                SynapseUtil.DownloadFolder.test_session.unzippedFolder(),
-//                SynapseUtil.DownloadFolder.test_session_schedule.unzippedFolder(),
-//                SynapseUtil.DownloadFolder.wake_sleep_schedule.unzippedFolder());
-//
-//        String sessionToken = BridgeUtil.authenticate();
-//        BridgeUtil.UserList bridgeUserList = BridgeUtil.getAllUsers(sessionToken);
-//
-//        // Match HM users to existing Bridge users, if no users
-//        // are found to match, you probably need to run UserMigration first
-//        List<BridgeUtil.MigrationPair> usersToMigrate =
-//                BridgeUtil.getUsersToMatch(uniqueUserData, bridgeUserList.items);
+        SynapseUtil.initializeSynapse();
+        SynapseUtil.downloadAndUnzipAllUserDataFiles();
+        List<HmUserData> uniqueUserData = MigrationUtil.createHmUserData(
+                SynapseUtil.DownloadFolder.test_session.unzippedFolder(),
+                SynapseUtil.DownloadFolder.test_session_schedule.unzippedFolder(),
+                SynapseUtil.DownloadFolder.wake_sleep_schedule.unzippedFolder());
+
+        String sessionToken = BridgeUtil.authenticate();
+        BridgeUtil.UserList bridgeUserList = BridgeUtil.getAllUsers(sessionToken);
+
+        // Match HM users to existing Bridge users, if no users
+        // are found to match, you probably need to run UserMigration first
+        List<BridgeUtil.MigrationPair> usersToMigrate =
+                BridgeUtil.getUsersToMatch(uniqueUserData, bridgeUserList.items);
 
         // TODO: mdephillips 9/22/21 write all user reports to bridge,
         // TODO: mdephillips 9/22/21 holding off for now until user migration algo is complete

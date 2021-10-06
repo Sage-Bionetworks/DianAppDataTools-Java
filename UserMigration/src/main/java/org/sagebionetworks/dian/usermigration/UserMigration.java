@@ -1,8 +1,8 @@
-package org.sagebionetoworks.dian.usermigration;
+package org.sagebionetworks.dian.usermigration;
 
-import org.sagebionetoworks.dian.datamigration.HmDataModel;
-import org.sagebionetoworks.dian.datamigration.MigrationUtil;
-import org.sagebionetoworks.dian.datamigration.SynapseUtil;
+import org.sagebionetworks.dian.datamigration.HmDataModel;
+import org.sagebionetworks.dian.datamigration.MigrationUtil;
+import org.sagebionetworks.dian.datamigration.SynapseUtil;
 import org.sagebionetworks.client.exceptions.SynapseException;
 
 import java.io.File;

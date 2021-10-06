@@ -30,9 +30,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.sagebionetoworks.dian.datamigration;
+package org.sagebionetworks.dian.datamigration;
 
-import org.sagebionetoworks.dian.datamigration.HmDataModel.*;
+import org.sagebionetworks.dian.datamigration.HmDataModel.*;
 
 import org.junit.Test;
 

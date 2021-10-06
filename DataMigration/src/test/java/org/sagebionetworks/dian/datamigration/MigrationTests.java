@@ -30,7 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.sagebionetoworks.dian.datamigration;
+package org.sagebionetworks.dian.datamigration;
 
 import com.google.common.collect.Lists;
 
@@ -46,9 +46,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.sagebionetoworks.dian.datamigration.BridgeUtil.*;
-import static org.sagebionetoworks.dian.datamigration.MigrationUtil.*;
-import static org.sagebionetoworks.dian.datamigration.HmDataModel.*;
+import static org.sagebionetworks.dian.datamigration.BridgeUtil.*;
+import static org.sagebionetworks.dian.datamigration.MigrationUtil.*;
+import static org.sagebionetworks.dian.datamigration.HmDataModel.*;
 
 public class MigrationTests {
 

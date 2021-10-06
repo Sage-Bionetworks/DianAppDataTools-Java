@@ -30,7 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.sagebionetoworks.dian.datamigration;
+package org.sagebionetworks.dian.datamigration;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,7 +40,7 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import com.google.i18n.phonenumbers.Phonenumber;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.sagebionetoworks.dian.datamigration.HmDataModel.*;
+import org.sagebionetworks.dian.datamigration.HmDataModel.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;

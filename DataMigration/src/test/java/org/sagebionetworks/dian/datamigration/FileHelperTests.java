@@ -30,7 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.sagebionetoworks.dian.datamigration;
+package org.sagebionetworks.dian.datamigration;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -38,7 +38,6 @@ import org.junit.Test;
 import org.sagebionetworks.schema.generator.FileUtils;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
