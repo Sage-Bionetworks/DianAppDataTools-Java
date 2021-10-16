@@ -33,5 +33,15 @@
     "participant_id": "999999",
     "name": "NoRaterYet",
     "study_id": "2"
+},
+{
+    "id": "7",
+    "participant_id": "888888",
+    "study_id": "2"
+},
+{
+    "id": "8",
+    "participant_id": "777777",
+    "study_id": "2"
 }
 ]

@@ -40,32 +40,44 @@ import java.util.Random;
 /**
  * This code came from Stack Exchange, with some changes to make it thread-safe. Unfortunately I
  * then lost the reference to the page I took it from. Cleaned up to our formatting standards.
- *
- *
  */
 public class SecureTokenGenerator {
 
-    private static final String UPPERCASE_ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    private static final String LOWERCASE_ALPHA = "abcdefghijklmnopqrstuvwxyz";
-    private static final String NUMERIC = "0123456789";
-    private static final String SPECIAL = "~!@#$%^&*-_=+?";
+    // Bridge password must be at least 8 characters;
+    // Bridge password must contain at least one uppercase letter (a-z)
+    // Letter "O" has been removed, as it shows up too similar to number "0" on bridge
+    // Letter "I" has been removed, as it shows up too similar to letter "l" on bridge
+    private static final String UPPERCASE_ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    // Bridge password must contain at least one lowercase letter (a-z)
+    // Letter "l" has been removed, as it shows up too similar to letter "I" on bridge
+    private static final String LOWERCASE_ALPHA = "abcdefghijkmnopqrstuvwxyz";
+    // "0" has been removed, as it shows up too similar to letter "O" on bridge
+    private static final String NUMERIC = "123456789";
+    // Bridge password must contain at least one symbol ( !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ );
+    // This subset of symbols was chosen because they would be easier to communicate over the phone
+    private static final String SYMBOL = "!#$%&'*+,-.:;=?@_";
 
     private static final String ALPHANUMERIC = UPPERCASE_ALPHA + LOWERCASE_ALPHA + NUMERIC;
-    private static final String PASSWORD = ALPHANUMERIC + SPECIAL;
+    // ALPHANUMERIC was added 3 times to decrease the number of symbols in a password
+    private static final String PASSWORD = ALPHANUMERIC + ALPHANUMERIC + ALPHANUMERIC + SYMBOL;
 
     public static final SecureTokenGenerator INSTANCE = new SecureTokenGenerator();
 
-    public static final SecureTokenGenerator PHONE_CODE_INSTANCE =
+    public static final SecureTokenGenerator ARC_ID_INSTANCE =
             new SecureTokenGenerator(6, new SecureRandom(), NUMERIC);
 
-    public static final SecureTokenGenerator NAME_SCOPE_INSTANCE =
-            new SecureTokenGenerator(5, new SecureRandom(), ALPHANUMERIC);
-
+    /**
+     * Create session identifiers. This is about 4.36e+37 unique values,
+     * which is enough for a good bridge password.
+     */
     public static final SecureTokenGenerator BRIDGE_PASSWORD =
             new SecureTokenGenerator(20, new SecureRandom(), PASSWORD);
 
     private final Random random;
     private final char[] characters;
+    public int getTokenLength() {
+        return characters.length;
+    }
     private final int length;
 
     private SecureTokenGenerator(int length, Random random, String characters) {
@@ -78,8 +90,8 @@ public class SecureTokenGenerator {
     }
 
     /**
-     * Create session identifiers. This is 4.36e+37 unique values, which is enough
-     * for a good session key.
+     * Create session identifiers. This is 4.36e+37 unique values,
+     * which is enough for a good sessions key.
      */
     private SecureTokenGenerator() {
         this(21, new SecureRandom(), ALPHANUMERIC);
@@ -105,7 +117,7 @@ public class SecureTokenGenerator {
         return token;
     }
 
-    private boolean isValidBridgePassword(String password) {
+    public boolean isValidBridgePassword(String password) {
         boolean containsUppercase = false;
         boolean containsLowercase = false;
         boolean containsNumeric = false;
@@ -116,7 +128,7 @@ public class SecureTokenGenerator {
             containsUppercase |= UPPERCASE_ALPHA.contains(character);
             containsLowercase |= LOWERCASE_ALPHA.contains(character);
             containsNumeric |= NUMERIC.contains(character);
-            containsSpecial |= SPECIAL.contains(character);
+            containsSpecial |= SYMBOL.contains(character);
         }
 
         return containsUppercase && containsLowercase && containsNumeric && containsSpecial;

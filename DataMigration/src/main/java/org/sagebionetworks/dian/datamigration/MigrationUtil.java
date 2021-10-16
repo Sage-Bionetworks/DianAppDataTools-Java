@@ -36,11 +36,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.sagebionetworks.dian.datamigration.HmDataModel.*;
+import org.sagebionetworks.dian.datamigration.HmDataModel.TableRow.*;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -48,17 +49,34 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-
 public class MigrationUtil {
 
-    public static String CONTAINS_SITE_LOC = "-site_location-";
-    public static String CONTAINS_PARTICIPANT_SITE_LOC = "-participant_site_location-";
-    public static String CONTAINS_PARTICIPANT = "-participant-";
-    public static String CONTAINS_PHONE = "-participant_phone-";
-    public static String CONTAINS_PARTICIPANT_RATER = "participant_rater-";
-    public static String CONTAINS_RATERS = "-rater-";
+    // Enum containing all the possible participant file identifiers
+    public enum ParticipantFileEnum {
+        PARTICIPANT("-participant-"),
+        RATER("-rater-"),
+        PHONE("-participant_phone-"),
+        SITE_LOCATION("-site_location-"),
+        PARTICIPANT_SITE_LOCATION("-participant_site_location-"),
+        PARTICIPANT_RATER("participant_rater-"),
+        PARTICIPANT_DEVICE_ID("-participant_device-"),
+        PARTICIPANT_NOTES("-participant_note-");
 
-    public static String NO_RATER_ASSIGNED_YET_EMAIL = "no_rater_assigned_yet";
+        ParticipantFileEnum(String identifier) {
+            this.identifier = identifier;
+        }
+        public String identifier;
+    }
+
+    // The ZIPs have json files that all follow the format at the end of the name like this
+    public static int FILENAME_DATE_SUFFIX_LENGTH = "2020-02-20T12-31-13Z.json".length();
+
+    // The length of all Arc IDs
+    public static int PARTICIPANT_ID_LENGTH = 6;
+
+    // Send users without site locations or Device IDs over to a study ID named HappyMedium
+    public static String ERROR_STUDY_ID = "Happy-Medium-Errors";
+    public static String NO_DEVICE_ID = "No-Device-Id";
 
     /**
      * Each file in the parameter list represents a directory
@@ -71,18 +89,18 @@ public class MigrationUtil {
      * @throws IOException if something went wrong in JSON parsing or reading the files
      */
     public static List<HmUserData> createHmUserData(
-            File testSessionUnzippedDir,
-            File testSessionScheduleUnzippedDir,
-            File wakeSleepScheduleUnzippedDir
+            Path testSessionUnzippedDir,
+            Path testSessionScheduleUnzippedDir,
+            Path wakeSleepScheduleUnzippedDir
     ) throws IOException {
 
         List<HmUserData> userList = new ArrayList<>();
 
         Map<String, HmDataModel.CompletedTestList> testMap =
                 completedTestMap(testSessionUnzippedDir);
-        Map<String, File> testScheduleMap =
+        Map<String, Path> testScheduleMap =
                 sessionScheduleMap(testSessionScheduleUnzippedDir);
-        Map<String, File> wakeSleepScheduleMap =
+        Map<String, Path> wakeSleepScheduleMap =
                 sessionScheduleMap(wakeSleepScheduleUnzippedDir);
 
         Set<String> arcIdSet = new HashSet<>();
@@ -111,36 +129,37 @@ public class MigrationUtil {
      * @throws IOException if a JSON file cannot be read
      */
     public static @NonNull Map<String, HmDataModel.CompletedTestList> completedTestMap(
-            @NonNull File testSessionExtractedFolder) throws IOException {
+            @NonNull Path testSessionExtractedFolder) throws IOException {
 
         Map<String, HmDataModel.CompletedTestList> completedTestMap = new HashMap<>();
         Map<String, List<HmDataModel.TestSession>> testSessionMap = new HashMap<>();
 
         int migrationFileCount = 0;
         List<String> failedToParseList = new ArrayList<>();
+        ObjectMapper mapper = new ObjectMapper();
 
-        List<String> filePathList = FileHelper
-                .findAllJsonFilesInFolder(testSessionExtractedFolder);
+        List<Path> filePathList = PathsHelper
+                .findAllJsonFilesInDirectory(testSessionExtractedFolder);
 
         // Iterate through the list of folders of days unzipped
-        for (String filePath : filePathList) {
-            File file = new File(filePath);
+        for (Path file: filePathList) {
             migrationFileCount++;
-            ObjectMapper mapper = new ObjectMapper();
-            InputStream is = new FileInputStream(file);
-            System.out.println("Parsing file " + file.getName());
-            HmDataModel.TestSession sessionObj = mapper.readValue(is, HmDataModel.TestSession.class);
 
-            if (sessionObj == null) {
-                failedToParseList.add(filePath);
-            } else {
-                String arcId = fixParticipantId(sessionObj.participant_id);
-                List<HmDataModel.TestSession> sessions = testSessionMap.get(arcId);
-                if (sessions == null) {
-                    sessions = new ArrayList<>();
+            String filename = file.getFileName().toString();
+            System.out.println("Parsing file " + filename);
+            try (InputStream is = Files.newInputStream(file)) {
+                HmDataModel.TestSession sessionObj = mapper.readValue(is, HmDataModel.TestSession.class);
+                if (sessionObj == null) {
+                    failedToParseList.add(filename);
+                } else {
+                    String arcId = fixParticipantId(sessionObj.participant_id);
+                    List<HmDataModel.TestSession> sessions = testSessionMap.get(arcId);
+                    if (sessions == null) {
+                        sessions = new ArrayList<>();
+                    }
+                    sessions.add(sessionObj);
+                    testSessionMap.put(arcId, sessions);
                 }
-                sessions.add(sessionObj);
-                testSessionMap.put(arcId, sessions);
             }
         }
 
@@ -163,49 +182,48 @@ public class MigrationUtil {
         return completedTestMap;
     }
 
-    public static @NonNull Map<String, File> sessionScheduleMap(
-            @NonNull File testSessionScheduleExtractedFolder) throws IOException {
+    public static @NonNull Map<String, Path> sessionScheduleMap(
+            @NonNull Path testSessionScheduleExtractedFolder) throws IOException {
 
-        Map<String, File> map = new HashMap<>();
+        Map<String, Path> map = new HashMap<>();
 
         int migrationFileCount = 0;
         List<String> failedToParseList = new ArrayList<>();
+        ObjectMapper mapper = new ObjectMapper();
 
-        List<String> filePathList = FileHelper
-                .findAllJsonFilesInFolder(testSessionScheduleExtractedFolder);
-
-        // The ZIPs have json files that all follow the format at the end of the name like this
-        int filenameDateSize = "2020-02-20T12-31-13Z.json".length();
+        List<Path> filePathList = PathsHelper
+                .findAllJsonFilesInDirectory(testSessionScheduleExtractedFolder);
 
         // Iterate through the list of folders of days unzipped
-        for (String filePath : filePathList) {
-            File file = new File(filePath);
+        for (Path file : filePathList) {
             migrationFileCount++;
-            ObjectMapper mapper = new ObjectMapper();
-            try (InputStream is = new FileInputStream(file)) {
+
+            String filename = file.getFileName().toString();
+            System.out.println("Parsing file " + filename);
+            try (InputStream is = Files.newInputStream(file)) {
                 HmDataModel.ParticipantScheduleData obj =
                         mapper.readValue(is, HmDataModel.ParticipantScheduleData.class);
 
                 if (obj == null || obj.participant_id == null) {
-                    failedToParseList.add(filePath);
+                    failedToParseList.add(filename);
                 } else {
                     String key = fixParticipantId(obj.participant_id);
-                    File existingFile = map.get(key);
+                    Path existingFile = map.get(key);
                     if (existingFile == null) {
                         map.put(key, file);
                     } else {
                         // There are multiple schedule entries per user,
                         // So we want to get the most recent one by looking at the filename
                         // which will always end with an iso 8601 date and ".json"
-                        String existingFilePath = existingFile.getAbsolutePath();
-                        if (existingFilePath.length() >= filenameDateSize) {
+                        String existingFilePath = existingFile.getFileName().toString();
+                        if (existingFilePath.length() >= FILENAME_DATE_SUFFIX_LENGTH) {
                             existingFilePath = existingFilePath.substring(
-                                    existingFilePath.length() - filenameDateSize);
+                                    existingFilePath.length() - FILENAME_DATE_SUFFIX_LENGTH);
                         }
-                        String newFilePath = file.getAbsolutePath();
-                        if (newFilePath.length() >= filenameDateSize) {
+                        String newFilePath = filename;
+                        if (newFilePath.length() >= FILENAME_DATE_SUFFIX_LENGTH) {
                             newFilePath = newFilePath.substring(
-                                    newFilePath.length() - filenameDateSize);
+                                    newFilePath.length() - FILENAME_DATE_SUFFIX_LENGTH);
                         }
                         if (newFilePath.compareTo(existingFilePath) > 0) {
                             map.put(key, file);
@@ -217,7 +235,9 @@ public class MigrationUtil {
 
         System.out.println("Test sessions parsing complete\nParsed " + migrationFileCount + " files.");
 
-        if (!failedToParseList.isEmpty()) {
+        if (!failedToParseList.isEmpty() &&
+                // Temporary fix for bad data TODO: mdephillips remove after mjvatow fixes on synapse
+            !failedToParseList.get(0).equals("999999 test_session_schedule 2019-09-11T14-37-38Z.json")) {
             String errorMsg = "Failed to parse file(s) " +
                     String.join(", ", failedToParseList);
             System.out.println(errorMsg);
@@ -231,46 +251,19 @@ public class MigrationUtil {
      * @param containingFolder that is an unzipped folder with 4-5 participant JSON files
      * @return never null, but the files within the return value may be null if not found
      */
-    public static HmDataModel.TableRow.ParticipantFiles findParticipantFiles(File containingFolder) {
-        HmDataModel.TableRow.ParticipantFiles files = new HmDataModel.TableRow.ParticipantFiles();
+    public static Map<ParticipantFileEnum, Path> findParticipantPaths(
+            Path containingFolder) throws IOException {
 
-        files.participants = FileHelper.findFileContaining(
-                containingFolder, CONTAINS_PARTICIPANT);
-        if (files.participants != null) {
-            System.out.println("Found participant file " + files.participants.getName());
+        Map<ParticipantFileEnum, Path> pathMap = new HashMap<>();
+        for (ParticipantFileEnum fileEnum: ParticipantFileEnum.values()) {
+            Path path = PathsHelper.findFileContaining(containingFolder, fileEnum.identifier);
+            if (path != null) {
+                pathMap.put(fileEnum, path);
+                System.out.println("Found participant file " +
+                        fileEnum.identifier + " at path " + path.toString());
+            }
         }
-
-        files.participantSiteLocations = FileHelper.findFileContaining(
-                containingFolder, CONTAINS_PARTICIPANT_SITE_LOC);
-        if (files.participantSiteLocations != null) {
-            System.out.println("Found participant site loc file " + files.participantSiteLocations.getName());
-        }
-
-        files.phone = FileHelper.findFileContaining(
-                containingFolder, CONTAINS_PHONE);
-        if (files.phone != null) {
-            System.out.println("Found participant phone file " + files.phone.getName());
-        }
-
-        files.siteLocations = FileHelper.findFileContaining(
-                containingFolder, CONTAINS_SITE_LOC);
-        if (files.siteLocations != null) {
-            System.out.println("Found site loc file " + files.siteLocations.getName());
-        }
-
-        files.participantRaters = FileHelper.findFileContaining(
-                containingFolder, CONTAINS_PARTICIPANT_RATER);
-        if (files.participantRaters != null) {
-            System.out.println("Found participant rater file " + files.participantRaters.getName());
-        }
-
-        files.raters = FileHelper.findFileContaining(
-                containingFolder, CONTAINS_RATERS);
-        if (files.raters != null) {
-            System.out.println("Found raters file " + files.raters.getName());
-        }
-
-        return files;
+        return pathMap;
     }
 
     /**
@@ -279,12 +272,11 @@ public class MigrationUtil {
      * @return the participant ID with a length of 6, with leading "0"s added
      */
     public static String fixParticipantId(String participantId) {
-        int targetLength = 6;
-        if (participantId.length() >= targetLength) {
-            return participantId.substring(0, targetLength);
+        if (participantId.length() >= PARTICIPANT_ID_LENGTH) {
+            return participantId.substring(0, PARTICIPANT_ID_LENGTH);
         }
-        int zerosToAdd = targetLength - participantId.length();
-        String zerosPrefix = StringUtils.repeat("0", targetLength).substring(0, zerosToAdd);
+        int zerosToAdd = PARTICIPANT_ID_LENGTH - participantId.length();
+        String zerosPrefix = StringUtils.repeat("0", zerosToAdd);
         return zerosPrefix + participantId;
     }
 
@@ -296,65 +288,51 @@ public class MigrationUtil {
      * @throws IOException if something goes wrong
      */
     public static @NonNull List<HmUser> createHmUserRaterData(
-            List<File> participantJsonFolder) throws IOException {
+            List<Path> participantJsonFolder) throws IOException {
 
         List<HmUser> data = new ArrayList<>();
+        ObjectMapper mapper = new ObjectMapper();
 
-        for (File folder : participantJsonFolder) {
+        for (Path folder : participantJsonFolder) {
 
-            ObjectMapper mapper = new ObjectMapper();
             List<HmUser> userList = new ArrayList<>();
+            Map<ParticipantFileEnum, Path> pathList = MigrationUtil.findParticipantPaths(folder);
 
-            HmDataModel.TableRow.ParticipantFiles files = MigrationUtil.findParticipantFiles(folder);
+            Participant[] participantList = TableRow.parseTableRow(mapper, pathList.get(
+                    ParticipantFileEnum.PARTICIPANT), Participant[].class);
+            Rater[] raters = TableRow.parseTableRow(mapper, pathList.get(
+                    ParticipantFileEnum.RATER), Rater[].class);
+            SiteLocation[] siteLocList = TableRow.parseTableRow(mapper, pathList.get(
+                    ParticipantFileEnum.SITE_LOCATION), SiteLocation[].class);
+            ParticipantPhone[] phoneList = TableRow.parseTableRow(mapper, pathList.get(
+                    ParticipantFileEnum.PHONE), ParticipantPhone[].class);
+            ParticipantNotes[] participantNotes = TableRow.parseTableRow(mapper, pathList.get(
+                    ParticipantFileEnum.PARTICIPANT_NOTES), ParticipantNotes[].class);
+            ParticipantDeviceId[] participantDeviceIds = TableRow.parseTableRow(mapper, pathList.get(
+                    ParticipantFileEnum.PARTICIPANT_DEVICE_ID), ParticipantDeviceId[].class);
+            ParticipantRater[] participantRater = TableRow.parseTableRow(mapper, pathList.get(
+                    ParticipantFileEnum.PARTICIPANT_RATER), ParticipantRater[].class);
+            ParticipantSiteLocation[] participantSiteLocList = TableRow.parseTableRow(mapper, pathList.get(
+                    ParticipantFileEnum.PARTICIPANT_SITE_LOCATION), ParticipantSiteLocation[].class);
 
-            HmDataModel.TableRow.ParticipantSiteLocation[] userAndSiteLocList = mapper.readValue(
-                    new FileInputStream(files.participantSiteLocations),
-                    HmDataModel.TableRow.ParticipantSiteLocation[].class);
-            System.out.println("Successfully parsed " + files.participantSiteLocations.getName());
+            for (Participant user : participantList) {
+                SiteLocation site = TableRow.findSiteLocation(user.id, participantSiteLocList, siteLocList);
+                Participant participant = TableRow.findParticipant(user.id, participantList);
+                Rater rater = TableRow.findParticipantRater(user.id, participantRater, raters);
+                ParticipantDeviceId deviceId = TableRow.findParticipantDeviceId(user.id, participantDeviceIds);
+                ParticipantNotes note = TableRow.findParticipantNotes(user.id, participantNotes);
 
-            HmDataModel.TableRow.Participant[] participantList = mapper.readValue(
-                    new FileInputStream(files.participants),
-                    HmDataModel.TableRow.Participant[].class);
-            System.out.println("Successfully parsed " + files.participants.getName());
-
-            HmDataModel.TableRow.SiteLocation[] siteLocList = mapper.readValue(
-                    new FileInputStream(files.siteLocations),
-                    HmDataModel.TableRow.SiteLocation[].class);
-            System.out.println("Successfully parsed " + files.siteLocations.getName());
-
-            HmDataModel.TableRow.ParticipantRater[] userAndRater = mapper.readValue(
-                    new FileInputStream(files.participantRaters),
-                    HmDataModel.TableRow.ParticipantRater[].class);
-            System.out.println("Successfully parsed " + files.participantRaters.getName());
-
-            HmDataModel.TableRow.Rater[] raters = mapper.readValue(
-                    new FileInputStream(files.raters), HmDataModel.TableRow.Rater[].class);
-            System.out.println("Successfully parsed " + files.raters.getName());
-
-            HmDataModel.TableRow.ParticipantPhone[] phoneList = new HmDataModel.TableRow.ParticipantPhone[0];
-            if (files.phone != null) {
-                phoneList = mapper.readValue(
-                        new FileInputStream(files.phone),
-                        HmDataModel.TableRow.ParticipantPhone[].class);
-                System.out.println("Successfully parsed " + files.phone.getName());
-            }
-
-            for (HmDataModel.TableRow.Participant user : participantList) {
-                HmDataModel.TableRow.SiteLocation site = HmDataModel.TableRow
-                        .findSiteLocation(user.id, userAndSiteLocList, siteLocList);
-                HmDataModel.TableRow.Participant participant = HmDataModel.TableRow
-                        .findParticipant(user.id, participantList);
-                HmDataModel.TableRow.ParticipantPhone phone = HmDataModel.TableRow
-                        .findParticipantPhone(user.id, phoneList);
-                HmDataModel.TableRow.Rater rater = HmDataModel.TableRow
-                        .findParticipantRater(user.id, userAndRater, raters);
+                // Phones are optional, as they only apply to EXR
+                ParticipantPhone phone = null;
+                if (phoneList != null) {
+                    phone = TableRow.findParticipantPhone(user.id, phoneList);
+                }
 
                 HmUser userMatch = new HmUser();
                 userMatch.arcId = participant.participant_id;
 
-                // In production, site should never be null,
-                // but the staging server has accounts without a valid site location
-                userMatch.siteLocation = site;
+                // Assign the user's Study ID based on various parameters
+                assignStudyId(userMatch, site, deviceId, note);
 
                 // If the rater is null at this point,
                 // that means HM has created the user,
@@ -374,21 +352,6 @@ public class MigrationUtil {
                     userMatch.name = participant.name;
                 }
 
-                // Assign and map the study_id # to a bridge study id string
-                if (participant.study_id.equals(HmDataModel.TableRow.STUDY_ID_MAP_ARC_HASD)) {
-                    userMatch.studyId = BridgeUtil.STUDY_ID_MAP_ARC_HASD;
-                } else if (participant.study_id.equals(HmDataModel.TableRow.STUDY_ID_DIAN_ARC_EXR)) {
-                    userMatch.studyId = BridgeUtil.STUDY_ID_DIAN_ARC_EXR;
-                } else if (participant.study_id.equals(HmDataModel.TableRow.STUDY_ID_DIAN_OBS_EXR)) {
-                    userMatch.studyId = BridgeUtil.STUDY_ID_DIAN_OBS_EXR;
-                } else {
-                    userMatch.studyId = participant.study_id;
-                }
-
-                // Assign the user a random password
-                userMatch.password = SecureTokenGenerator.BRIDGE_PASSWORD.nextBridgePassword();
-
-                System.out.println("Successfully added user with table row id " + participant.id);
                 userList.add(userMatch);
             }
 
@@ -401,84 +364,77 @@ public class MigrationUtil {
         return data;
     }
 
-    /**
-     * @param userList to organize by site location
-     * @param missingSiteId the site location to be used, when the user is not associated with one
-     * @return the user lists mapped to site location
-     */
-    public static Map<TableRow.SiteLocation, List<HmUser>>
-        organizeBySiteLocation(List<HmUser> userList, String missingSiteId) {
+    public static void assignStudyId(HmUser user, SiteLocation site,
+                                     ParticipantDeviceId deviceId, ParticipantNotes notes) {
 
-        TableRow.SiteLocation missingSiteLocation =
-                new TableRow.SiteLocation(missingSiteId, missingSiteId);
+        // Assign notes or empty string
+        String notesStr = notes == null ? "" : notes.note;
 
-        Map<TableRow.SiteLocation, List<HmUser>> siteLocationUsers = new HashMap<>();
+        // In this case, there is nothing we can do for migrating the user.
+        // They are an invalid user that does not belong to a site yet.
+        // Send them to the Happy Medium Error sub-study for tracking purposes.
+        if (site == null || site.name == null) {
+            String errorNote = " Could not find site location ";
+            System.out.println(errorNote + " for user " + user.arcId);
+            notesStr += errorNote;
 
-        for (HmUser user: userList) {
-            TableRow.SiteLocation site = user.siteLocation;
-            if (site == null) {
-                site = missingSiteLocation;
-            }
-            List<HmUser> usersAtSite = siteLocationUsers.get(site);
-            if (usersAtSite == null) {
-                usersAtSite = new ArrayList<>();
-            }
-            usersAtSite.add(user);
-            siteLocationUsers.put(site, usersAtSite);
+            user.studyId = ERROR_STUDY_ID;
+            user.externalId = user.arcId;
+            user.password = SecureTokenGenerator.BRIDGE_PASSWORD.nextBridgePassword();
+            user.deviceId = deviceId == null ? NO_DEVICE_ID : deviceId.device_id;
+            user.notes = notesStr;
+            return;
         }
-        return siteLocationUsers;
+
+        site.name = bridgifySiteName(site.name);
+        // We can assign these for the remaining cases
+        user.studyId = site.name;
+        user.notes = notesStr;
+        user.siteLocation = site;
+
+        // In this case, a user has been created for a site location,
+        // but that user has not signed in yet.
+        // In this case, make a new account that the site can use later.
+        if (deviceId == null) {
+            System.out.println("Unused user for site " + user.arcId);
+            user.deviceId = NO_DEVICE_ID;
+            user.externalId = user.arcId;
+            user.password = SecureTokenGenerator.BRIDGE_PASSWORD.nextBridgePassword();
+            return;
+        }
+
+        // In this case, the user has a valid device-id,
+        // which means they have been using the HappyMedium app.
+        // We need to create a temporary data holding account that only they can access to.
+        // When they update to the Sage Bridge app, they can use their
+        // device-id to download their data and create a new account on Bridge.
+        System.out.println("Migrating user account as device-id " + user.arcId);
+        user.deviceId = deviceId.device_id;
+        user.externalId = user.deviceId;
+        user.password = user.deviceId;
     }
 
     /**
-     * Creates a CSV file for user credentials for each site location.
-     * The format of the CSV matches the LastPass credential store import format
-     * https://support.logmeininc.com/lastpass/help/how-do-i-import-stored-data-into-lastpass-using-a-generic-csv-file
-     *
-     * These files are stored in the project's root directory on your computer,
-     * and contain user passwords in plain text.
-     *
-     * It is critical the files are never uploaded anywhere besides LastPass
-     * and once they are, they should be deleted from the user's computer.
-     *
-     * CSV Format Example:
-     * url,username,password,extra,name,grouping,fav,,
-     * HASD,111111,abcde-fghijk-lmnop-qrstu-v,,111111,SiteAImport,0,,
-     * HASD,222222,abcde-fghijk-lmnop-qrstu-v,,222222,SiteAImport,0,,
-     * HASD,3333333,abcde-fghijk-lmnop-qrstu-v,,333333,SiteAImport,0,,
-     *
-     * @param usersBySite users grouped by site location
+     * Bridge does not allow apostrophes, periods, or spaces in site names,
+     * and HappyMedium had some, so we must remove them.
+     * @param siteName to convert to a bridge acceptable site name
+     * @return the converted site name
      */
-    public static void createAndSaveLastPassCsvImport(
-        Map<HmDataModel.TableRow.SiteLocation, List<HmDataModel.HmUser>> usersBySite)
-            throws IOException {
-
-        File root = new File("Credentials");
-        FileHelper.createFolderIfNecessary(root);
-
-        for (TableRow.SiteLocation site: usersBySite.keySet()) {
-            List<HmDataModel.HmUser> userList = usersBySite.get(site);
-            StringBuilder csvData = new StringBuilder();
-            csvData.append("url,username,password,extra,name,grouping,fav,,\n");
-
-            for (HmUser user: userList) {
-                // URL for app deep link will follow the format
-                // https://sagebionetworks.org/STUDY_ID/mobile-auth
-                csvData.append("https://sagebionetworks.org/");
-                csvData.append(user.studyId);
-                csvData.append("/mobile-auth,");
-                csvData.append(user.arcId); // username
-                csvData.append(",");
-                csvData.append(user.password);
-                csvData.append(",,");
-                csvData.append(user.arcId); // credential name
-                csvData.append(",");
-                csvData.append(site.name); // LastPass Folder name, by site
-                csvData.append(",0,,\n");
-            }
-
-            String csvFilename = File.separator + site.name + ".csv";
-            File file = new File(root.getAbsolutePath() + csvFilename);
-            FileHelper.writeToFile(csvData.toString(), file);
+    public static String bridgifySiteName(String siteName) {
+        if (siteName == null) {
+            return null;
         }
+        return siteName.replace("'", "")
+                .replace(".", "")
+                .replace(" ", "");
+    }
+
+    public static HmUserData findMatchingData(HmUser user, List<HmUserData> dataList) {
+        for (HmUserData data: dataList) {
+            if (user.arcId.equals(data.arcId)) {
+                return data;
+            }
+        }
+        return null;
     }
 }

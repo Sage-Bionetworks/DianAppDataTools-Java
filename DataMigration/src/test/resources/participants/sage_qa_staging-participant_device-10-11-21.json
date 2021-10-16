@@ -1,0 +1,80 @@
+[
+    {
+        "id": "1",
+        "participant": "1",
+        "device_id": "c715b9dc-a670-45bf-92c9-b4e5142e3e4f",
+        "device_type": "B2017G",
+        "active": "1",
+        "created_at": "1576101269",
+        "updated_at": "1576101269",
+        "app_version": "0.0.0",
+        "os_version": "7.1.1",
+        "os_type": "Android",
+        "raw_device_info": "Android|ZTE B2017G|7.1.1|25|ZTE\/P852A12\/tulip:7.1.1\/NMF26V\/20170830.223936:user\/release-keys"
+    },
+    {
+        "id": "2",
+        "participant": "2",
+        "device_id": "d1a5cbaf-288c-48dd-9d4a-98c90213ac01",
+        "device_type": "HUAWEI BLN-L24",
+        "active": "0",
+        "created_at": "1576101310",
+        "updated_at": "1591991485",
+        "app_version": "0.0.0",
+        "os_version": "7.0",
+        "os_type": "Android",
+        "raw_device_info": "Android|HUAWEI BLN-L24|7.0|24|HONOR\/BLN-L24\/HWBLN-H:7.0\/HONORBLN-L24\/C567B360:user\/release-keys"
+    },
+    {
+        "id": "3",
+        "participant": "3",
+        "device_id": "7799c212-49aa-417a-8f8d-a7d50390d558",
+        "device_type": "LGE LG-M154",
+        "active": "1",
+        "created_at": "1576102395",
+        "updated_at": "1576102395",
+        "app_version": "0.0.0",
+        "os_version": "6.0.1",
+        "os_type": "Android",
+        "raw_device_info": "Android|LGE LG-M154|6.0.1|23|lge\/lv1_crk_us\/lv1:6.0.1\/MXB48T\/170121646eb68:user\/release-keys"
+    },
+    {
+        "id": "4",
+        "participant": "4",
+        "device_id": "E402924D-34CE-443B-9E53-C0466440D622",
+        "device_type": "iPhone 7 Plus",
+        "active": "0",
+        "created_at": "1576106415",
+        "updated_at": "1593045174",
+        "app_version": "0.1.0",
+        "os_version": "13.1.3",
+        "os_type": "iOS",
+        "raw_device_info": " iOS|iPhone9,4|13.1.3"
+    },
+    {
+        "id": "5",
+        "participant": "5",
+        "device_id": "193A86E0-892F-4230-9688-2D9E4B1556F9",
+        "device_type": "iPhone12,5",
+        "active": "1",
+        "created_at": "1576130785",
+        "updated_at": "1576219089",
+        "app_version": "0.1.0",
+        "os_version": "13.3",
+        "os_type": "iOS",
+        "raw_device_info": " iOS|iPhone12,5|13.3"
+    },
+    {
+        "id": "6",
+        "participant": "6",
+        "device_id": "cef87c9d-5d9b-48a6-943a-48680fd57a2c",
+        "device_type": "Google Pixel 2",
+        "active": "1",
+        "created_at": "1576165222",
+        "updated_at": "1576165222",
+        "app_version": "0.0.0",
+        "os_version": "10",
+        "os_type": "Android",
+        "raw_device_info": "Android|Google Pixel 2|10|29|google\/walleye\/walleye:10\/QQ1A.191205.008\/5974827:user\/release-keys"
+    }
+]

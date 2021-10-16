@@ -36,6 +36,7 @@ import org.sagebionetworks.client.exceptions.SynapseException;
 import org.sagebionetworks.dian.datamigration.HmDataModel.*;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -43,17 +44,9 @@ import java.util.List;
  */
 public class DataMigration {
 
-    /**
-     * This function reads daily ZIP data exports from Synapse
-     * in HM's JSON export format, parses the JSON,
-     * and then uploads the data to the corresponding Bridge users.
-     *
-     * This must be run AFTER the UserMigration functions succeeds,
-     * as there will be no users to write the user reports to otherwise.
-     */
     public static void main(String[] args) throws IOException, SynapseException {
         try {
-             runDataMigration();
+            runDataMigration();
         } finally {
             // Delete all traces of the algorithm.
             // This is for enhanced data privacy,
@@ -65,25 +58,30 @@ public class DataMigration {
     private static void runDataMigration() throws SynapseException, IOException {
         System.out.println("Beginning Data Migration");
 
-        // TODO: mdephillips 10/2/21 testing docker build, uncomment after
+        // Initialize Sage APIs
         SynapseUtil.initializeSynapse();
+        BridgeJavaSdkUtil.initialize();
+
+        // Download the participant and data files
         SynapseUtil.downloadAndUnzipAllUserDataFiles();
-        List<HmUserData> uniqueUserData = MigrationUtil.createHmUserData(
+        SynapseUtil.downloadAndUnzipAllParticipantFiles();
+
+        // Create the data model from the participant files
+        List<HmUser> userList = MigrationUtil.createHmUserRaterData(Arrays.asList(
+                SynapseUtil.DownloadFolder.hasd.unzippedFolder(),
+                SynapseUtil.DownloadFolder.exr.unzippedFolder()));
+
+        // Create the data model from the data files
+        List<HmUserData> userDataList = MigrationUtil.createHmUserData(
                 SynapseUtil.DownloadFolder.test_session.unzippedFolder(),
                 SynapseUtil.DownloadFolder.test_session_schedule.unzippedFolder(),
                 SynapseUtil.DownloadFolder.wake_sleep_schedule.unzippedFolder());
 
-        String sessionToken = BridgeUtil.authenticate();
-        BridgeUtil.UserList bridgeUserList = BridgeUtil.getAllUsers(sessionToken);
-
-        // Match HM users to existing Bridge users, if no users
-        // are found to match, you probably need to run UserMigration first
-        List<BridgeUtil.MigrationPair> usersToMigrate =
-                BridgeUtil.getUsersToMatch(uniqueUserData, bridgeUserList.items);
-
-        // TODO: mdephillips 9/22/21 write all user reports to bridge,
-        // TODO: mdephillips 9/22/21 holding off for now until user migration algo is complete
-        // BridgeUtil.writeAllUserReports(sessionToken, usersToMigrate);
+        // Migrate all users and their data
+        for (HmUser user: userList) {
+            HmUserData data = MigrationUtil.findMatchingData(user, userDataList);
+            BridgeJavaSdkUtil.migrateUser(user, data);
+        }
 
         System.out.println("Completed data migration successfully");
     }

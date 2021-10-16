@@ -50,6 +50,8 @@ import org.sagebionetworks.schema.generator.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -75,11 +77,11 @@ public class SynapseUtil {
         wake_sleep_schedule,
         hasd,
         exr;
-        public File downloadFolder() {
-            return new File(DOWNLOAD_DIR + File.separator + name());
+        public Path downloadFolder() {
+            return Paths.get(DOWNLOAD_DIR).resolve(name());
         }
-        public File unzippedFolder() {
-            return new File(DOWNLOAD_DIR + File.separator + name() + "_unzipped");
+        public Path unzippedFolder() {
+            return Paths.get(DOWNLOAD_DIR).resolve(name()).resolve("unzipped");
         }
 
         public static ArrayList<DownloadFolder> dataFolders() {
@@ -93,7 +95,11 @@ public class SynapseUtil {
     public static String ZIP = ".zip";
     public static String PARTICIPANT_FILE_SUFFIX = "participant_json.zip";
 
-    public static void initializeSynapse() {
+    /**
+     * Must be called to initialize the Synapse API, before calling download functions.
+     * @throws IOException if we cannot create the directories to store download data
+     */
+    public static void initializeSynapse() throws IOException {
         // Create Synapse API access
         synapse = new SynapseClientImpl();
         synapse.setBearerAuthorizationToken(synapsePersonalAccessToken);
@@ -108,11 +114,11 @@ public class SynapseUtil {
     /**
      * Creates a temporary directories where all Synapse download/unzipped files are stored
      */
-    public static void createDownloadDirs() {
-        FileHelper.createFolderIfNecessary(new File(DOWNLOAD_DIR));
+    public static void createDownloadDirs() throws IOException {
+        PathsHelper.createFolderIfNecessary(Paths.get(DOWNLOAD_DIR));
         for (DownloadFolder folder: DownloadFolder.values()) {
-            FileHelper.createFolderIfNecessary(folder.downloadFolder());
-            FileHelper.createFolderIfNecessary(folder.unzippedFolder());
+            PathsHelper.createFolderIfNecessary(folder.downloadFolder());
+            PathsHelper.createFolderIfNecessary(folder.unzippedFolder());
         }
     }
 
@@ -149,13 +155,15 @@ public class SynapseUtil {
                         fileEntityList, null, null);
                 FileHandleAssociation file = createFileHandlAssociation(zipEntity);
 
-                System.out.println("Downloading file " + file.getAssociateObjectId() + ".zip");
-                File downloadFolderFile = downloadFolder.downloadFolder();
+                String downloadFileName = file.getAssociateObjectId() + ".zip";
+                System.out.println("Downloading file " + downloadFileName);
+                File downloadFolderFile = downloadFolder
+                        .downloadFolder().resolve(downloadFileName).toFile();
                 synapse.downloadFile(file, downloadFolderFile);
 
                 System.out.println("Unzipping file " + file.getAssociateObjectId() + ".zip");
                 UnzipUtil.unzip(downloadFolderFile.getAbsolutePath(),
-                        downloadFolder.unzippedFolder().getAbsolutePath());
+                        downloadFolder.unzippedFolder().toFile().getAbsolutePath());
             }
         }
     }
@@ -176,14 +184,13 @@ public class SynapseUtil {
 
             String downloadFileName = file.getAssociateObjectId() + ".zip";
             System.out.println("Downloading file " + downloadFileName);
-            File downloadFile = new File(
-                    downloadFolder.downloadFolder().getAbsoluteFile() +
-                    File.separator + downloadFileName);
-            synapse.downloadFile(file, downloadFile);
+            File downloadFolderFile = downloadFolder
+                    .downloadFolder().resolve(downloadFileName).toFile();
+            synapse.downloadFile(file, downloadFolderFile);
 
             System.out.println("Unzipping file " + file.getAssociateObjectId() + ".zip");
-            UnzipUtil.unzip(downloadFile.getAbsolutePath(),
-                    downloadFolder.unzippedFolder().getAbsolutePath());
+            UnzipUtil.unzip(downloadFolderFile.getAbsolutePath(),
+                    downloadFolder.unzippedFolder().toFile().getAbsolutePath());
         }
     }
 

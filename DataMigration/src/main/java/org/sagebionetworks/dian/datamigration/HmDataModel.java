@@ -32,15 +32,65 @@
 package org.sagebionetworks.dian.datamigration;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This file contains all the data models used by HappyMedium
+ * This file contains all the data models used by HappyMedium,
+ * as well as the data models we use to transfer HM users
+ * over to Bridge server.
  */
 public class HmDataModel {
+
+    /**
+     * This class is used to compile the need to know data
+     * about a Happy Medium user, all in one data class
+     */
+    public static class HmUser {
+        // Unique 6 digit code used to identify a user
+        public String arcId;
+        // External ID for the account
+        public String externalId;
+        // Password for account
+        public String password;
+        // This is the Bridge sub-study identifier
+        public String studyId;
+        // Non-null in the case of studyId EXR, null for External ID users
+        public String phone;
+        // Only used in QA, used to track a user's testing name
+        public String name;
+        // A unique UUID created when a user first signed up in Happy Medium's app.
+        // This is only available to the user and HM's servers.
+        // We use it as a one-time use activation code to transfer the user's data.
+        public String deviceId;
+        // The site location managing the user.
+        // For HASD, this is always Marisol at WashU.
+        // For DIAN_OBS, this will be whichever university or organization running the sub-study
+        public TableRow.SiteLocation siteLocation;
+        // This is the individual who helped the user on-board on the app.
+        public TableRow.Rater rater;
+        // These are the notes associated with a user
+        public String notes;
+    }
+
+    /**
+     * A mapping of Arc ID to a user's data
+     */
+    public static class HmUserData {
+        public String arcId;
+        // The list of completed tests the user has done
+        public HmDataModel.CompletedTestList completedTests;
+        // The most recent wake sleep schedule the user has completed
+        public Path wakeSleepSchedule;
+        // The most recent test session schedule the user has completed
+        public Path testSessionSchedule;
+    }
 
     /**
      * Classes used to parse participant data exported as JSON
@@ -49,11 +99,24 @@ public class HmDataModel {
      */
     public static class TableRow {
 
+        public static <T> T parseTableRow(
+                ObjectMapper mapper, Path path, Class<T> valueType) throws IOException {
+            if (path == null) {
+                return null;
+            }
+            try (InputStream is = Files.newInputStream(path)) {
+                T retVal = mapper.readValue(is, valueType);
+                System.out.println("Successfully parsed " + path.getFileName().toString());
+                return retVal;
+            }
+        }
+
         public static SiteLocation findSiteLocation(
-                String id, ParticipantSiteLocation[] siteLocMap, SiteLocation[] sites) {
+                String participantTableId, ParticipantSiteLocation[] siteLocMap, SiteLocation[] sites) {
 
             for (ParticipantSiteLocation siteLocMapping: siteLocMap) {
-                if (siteLocMapping.participant != null && siteLocMapping.participant.equals(id)) {
+                if (siteLocMapping.participant != null &&
+                        siteLocMapping.participant.equals(participantTableId)) {
                     String siteTableId = siteLocMapping.site_location;
                     for (SiteLocation siteMatch: sites) {
                         if (siteMatch.id != null && siteMatch.id.equals(siteTableId)) {
@@ -65,9 +128,11 @@ public class HmDataModel {
             return null;
         }
 
-        public static Participant findParticipant(String id, Participant[] participants) {
+        public static Participant findParticipant(
+                String participantTableId, Participant[] participants) {
+
             for (Participant participant: participants) {
-                if (participant.id != null && participant.id.equals(id)) {
+                if (participant.id != null && participant.id.equals(participantTableId)) {
                     return participant;
                 }
             }
@@ -75,9 +140,9 @@ public class HmDataModel {
         }
 
         public static Rater findParticipantRater(
-                String id, ParticipantRater[] participantRaters, Rater[] raters) {
+                String participantTableId, ParticipantRater[] participantRaters, Rater[] raters) {
             for (ParticipantRater rater: participantRaters) {
-                if (rater.participant != null && rater.participant.equals(id)) {
+                if (rater.participant != null && rater.participant.equals(participantTableId)) {
                     String raterTableId = rater.registered_by;
                     for (Rater raterMatch: raters) {
                         if (raterMatch.id != null && raterMatch.id.equals(raterTableId)) {
@@ -89,23 +154,37 @@ public class HmDataModel {
             return null;
         }
 
-        public static ParticipantPhone findParticipantPhone(String id, ParticipantPhone[] phoneList) {
+        public static ParticipantPhone findParticipantPhone(
+                String participantTableId, ParticipantPhone[] phoneList) {
+
             for (ParticipantPhone phone: phoneList) {
-                if (phone != null && phone.participant_id.equals(id)) {
+                if (phone != null && phone.participant_id.equals(participantTableId)) {
                     return phone;
                 }
             }
             return null;
         }
 
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        public static class ParticipantFiles {
-            public File siteLocations;
-            public File participantSiteLocations;
-            public File phone;
-            public File participants;
-            public File participantRaters;
-            public File raters;
+        public static ParticipantNotes findParticipantNotes(
+                String participantTableId, ParticipantNotes[] notesList) {
+
+            for (ParticipantNotes note: notesList) {
+                if (note != null && note.participant.equals(participantTableId)) {
+                    return note;
+                }
+            }
+            return null;
+        }
+
+        public static ParticipantDeviceId findParticipantDeviceId(
+                String participantTableId, ParticipantDeviceId[] deviceIdList) {
+
+            for (ParticipantDeviceId deviceId: deviceIdList) {
+                if (deviceId != null && deviceId.participant.equals(participantTableId)) {
+                    return deviceId;
+                }
+            }
+            return null;
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -193,6 +272,26 @@ public class HmDataModel {
             public String study_id;
             // The rater's email
             public String email;
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public static class ParticipantDeviceId {
+            // ParticipantDeviceId table row ID
+            public String id;
+            // This participant is the ParticipantTableRow id field
+            public String participant;
+            // The participant's most recent device id
+            public String device_id;
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public static class ParticipantNotes {
+            // ParticipantDeviceId table row ID
+            public String id;
+            // This participant is the ParticipantTableRow id field
+            public String participant;
+            // The participant's notes
+            public String note;
         }
     }
 
@@ -308,26 +407,5 @@ public class HmDataModel {
             this.session = session;
             this.completedOn = completedOn;
         }
-    }
-
-    /**
-     * This class is used to compile the need to know data
-     * about a Happy Medium user, all in one data class
-     */
-    public static class HmUser {
-        public String arcId;
-        public String studyId;
-        public String phone;
-        public String name;
-        public String password;
-        public TableRow.SiteLocation siteLocation;
-        public TableRow.Rater rater;
-    }
-
-    public static class HmUserData {
-        public String arcId;
-        public HmDataModel.CompletedTestList completedTests;
-        public File wakeSleepSchedule;
-        public File testSessionSchedule;
     }
 }

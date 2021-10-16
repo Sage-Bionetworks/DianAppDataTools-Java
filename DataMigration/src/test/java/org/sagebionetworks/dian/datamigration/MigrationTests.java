@@ -32,12 +32,12 @@
 
 package org.sagebionetworks.dian.datamigration;
 
-import com.google.common.collect.Lists;
-
 import org.junit.Test;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -45,51 +45,33 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.sagebionetworks.dian.datamigration.BridgeUtil.*;
 import static org.sagebionetworks.dian.datamigration.MigrationUtil.*;
 import static org.sagebionetworks.dian.datamigration.HmDataModel.*;
 
 public class MigrationTests {
 
-    private final String rootParticipantsFolderStr =
-            "src/test/java/org/sagebionetoworks/dian/datamigration/participants";
-    private final File rootParticipantsFolder = new File(rootParticipantsFolderStr);
+    private final Path resourceDirectory = Paths.get("src", "test", "resources");
+    private final Path participantsFolder = resourceDirectory.resolve("participants");
+    private final Path testSessionsFolder = resourceDirectory.resolve("testSessions");
+    private final Path testSessionsSchedulesFolder = resourceDirectory.resolve("testSessionSchedules");
+    private final Path wakeSleepSchedulesFolder = resourceDirectory.resolve("wakeSleepSchedules");
 
-    private final String rootTestSessionsFolderStr =
-            "src/test/java/org/sagebionetoworks/dian/datamigration/testSessions";
-    private final File rootTestSessionsFolder = new File(rootTestSessionsFolderStr);
-
-    private final String rootTestSessionsSchedulesFolderStr =
-            "src/test/java/org/sagebionetoworks/dian/datamigration/testSessionSchedules";
-    private final File rootTestSessionsSchedulesFolder = new File(rootTestSessionsSchedulesFolderStr);
-
-    private final String rootWakeSleepSchedulesFolderStr =
-            "src/test/java/org/sagebionetoworks/dian/datamigration/wakeSleepSchedules";
-    private final File rootWakeSleepSchedulesFolder = new File(rootWakeSleepSchedulesFolderStr);
-
-    private final String expectedSessionsSchedules000000 = rootTestSessionsSchedulesFolderStr +
-            "/test_session_schedules_2021-07-08/" +
+    private final String expectedSessionsSchedules000000 =
             "000000 test_session_schedule 2019-08-29T16-06-11Z.json";
 
-    private final String expectedSessionsSchedules000001 = rootTestSessionsSchedulesFolderStr +
-            "/test_session_schedules_2021-07-08/" +
+    private final String expectedSessionsSchedules000001 =
             "000001 test_session_schedule 2020-01-08T10-18-37Z.json";
 
-    private final String expectedSessionsSchedules000077 = rootTestSessionsSchedulesFolderStr +
-            "/test_session_schedules_2021-07-09/" +
+    private final String expectedSessionsSchedules000077 =
             "000077 test_session_schedule 2020-11-05T13-03-26Z.json";
 
-    private final String expectedWakeSleepSchedules000000 = rootWakeSleepSchedulesFolderStr +
-            "/wake_sleep_schedules_08-07-21/" +
+    private final String expectedWakeSleepSchedules000000 =
             "000000 Availability 2019-08-29T16-06-11Z.json";
 
-    private final String expectedWakeSleepSchedules000001 = rootWakeSleepSchedulesFolderStr +
-            "/wake_sleep_schedules_08-07-21/" +
+    private final String expectedWakeSleepSchedules000001 =
             "000001 Availability 2020-01-08T10-18-37Z.json";
 
-    private final String expectedWakeSleepSchedules000077 = rootWakeSleepSchedulesFolderStr +
-            "/wake_sleep_schedules_08-08-21/" +
+    private final String expectedWakeSleepSchedules000077 =
             "000077 Availability 2020-11-05T13-03-26Z.json";
 
     List<HmDataModel.CompletedTest> expectedUser000000 = Arrays.asList(
@@ -115,99 +97,183 @@ public class MigrationTests {
             0, 1, 1, 1567181794));
 
     @Test
-    public void test_findParticipantFiles() {
-        HmDataModel.TableRow.ParticipantFiles participantFiles =
-                MigrationUtil.findParticipantFiles(rootParticipantsFolder);
+    public void test_findParticipantFiles() throws IOException {
 
-        assertNotNull(participantFiles);
+        Map<ParticipantFileEnum, Path> pathMap =
+                MigrationUtil.findParticipantPaths(participantsFolder);
 
-        assertNotNull(participantFiles.participants);
-        assertTrue(participantFiles.participants.getAbsolutePath().endsWith(
-                rootParticipantsFolderStr + "/sage_qa-participant-9-21-21.json"));
+        assertNotNull(pathMap);
+        assertEquals(pathMap.keySet().size(), 8);
 
-        assertNotNull(participantFiles.siteLocations);
-        assertTrue(participantFiles.siteLocations.getAbsolutePath().endsWith(
-                rootParticipantsFolderStr + "/sage_qa-site_location-9-21-21.json"));
+        Path path = pathMap.get(ParticipantFileEnum.PARTICIPANT);
+        assertNotNull(path);
+        String filename = path.getFileName().toString();
+        assertNotNull(filename);
+        assertEquals(filename, "sage_qa-participant-9-21-21.json");
 
-        assertNotNull(participantFiles.raters);
-        assertTrue(participantFiles.raters.getAbsolutePath().endsWith(
-                rootParticipantsFolderStr + "/sage_qa-rater-9-21-21.json"));
+        path = pathMap.get(ParticipantFileEnum.SITE_LOCATION);
+        assertNotNull(path);
+        filename = path.getFileName().toString();
+        assertNotNull(filename);
+        assertEquals(filename, "sage_qa-site_location-9-21-21.json");
 
-        assertNotNull(participantFiles.phone);
-        assertTrue(participantFiles.phone.getAbsolutePath().endsWith(
-                rootParticipantsFolderStr + "/sage_qa-participant_phone-9-21-21.json"));
+        path = pathMap.get(ParticipantFileEnum.RATER);
+        assertNotNull(path);
+        filename = path.getFileName().toString();
+        assertNotNull(filename);
+        assertEquals(filename, "sage_qa-rater-9-21-21.json");
 
-        assertNotNull(participantFiles.participantRaters);
-        assertTrue(participantFiles.participantRaters.getAbsolutePath().endsWith(
-                rootParticipantsFolderStr + "/sage_qa_staging_participant_rater-9-21-21.json"));
+        path = pathMap.get(ParticipantFileEnum.PHONE);
+        assertNotNull(path);
+        filename = path.getFileName().toString();
+        assertNotNull(filename);
+        assertEquals(filename, "sage_qa-participant_phone-9-21-21.json");
 
-        assertNotNull(participantFiles.participantSiteLocations);
-        assertTrue(participantFiles.participantSiteLocations.getAbsolutePath().endsWith(
-                rootParticipantsFolderStr + "/sage_qa-participant_site_location-9-21-21.json"));
+        path = pathMap.get(ParticipantFileEnum.PARTICIPANT_RATER);
+        assertNotNull(path);
+        filename = path.getFileName().toString();
+        assertNotNull(filename);
+        assertEquals(filename, "sage_qa_staging_participant_rater-9-21-21.json");
+
+        path = pathMap.get(ParticipantFileEnum.PARTICIPANT_SITE_LOCATION);
+        assertNotNull(path);
+        filename = path.getFileName().toString();
+        assertNotNull(filename);
+        assertEquals(filename, "sage_qa-participant_site_location-9-21-21.json");
+
+        path = pathMap.get(ParticipantFileEnum.PARTICIPANT_DEVICE_ID);
+        assertNotNull(path);
+        filename = path.getFileName().toString();
+        assertNotNull(filename);
+        assertEquals(filename, "sage_qa_staging-participant_device-10-11-21.json");
+
+        path = pathMap.get(ParticipantFileEnum.PARTICIPANT_NOTES);
+        assertNotNull(path);
+        filename = path.getFileName().toString();
+        assertNotNull(filename);
+        assertEquals(filename, "sage_qa_staging-participant_note-10-11-21.json");
     }
 
      @Test
     public void test_createHmUserRaterData() throws IOException {
+        List<Path> participantPathList = new ArrayList<>();
+        participantPathList.add(participantsFolder);
+
         List<HmUser> users = MigrationUtil
-                .createHmUserRaterData(Lists.newArrayList(rootParticipantsFolder));
+                .createHmUserRaterData(participantPathList);
         assertNotNull(users);
-        assertEquals(6, users.size());
+        assertEquals(8, users.size());
 
         HmUser user = users.get(0);
         assertEquals("000001", user.arcId);
+        assertEquals("c715b9dc-a670-45bf-92c9-b4e5142e3e4f", user.externalId);
+        assertEquals("c715b9dc-a670-45bf-92c9-b4e5142e3e4f", user.password);
+        assertEquals("c715b9dc-a670-45bf-92c9-b4e5142e3e4f", user.deviceId);
         assertEquals("EXR_Test1", user.name);
-        assertEquals(STUDY_ID_DIAN_ARC_EXR, user.studyId);
+        assertEquals("1-WashU", user.studyId);
         assertNotNull(user.phone);
         assertEquals("+11111111111", user.phone);
         assertEquals("rater1@test.edu", user.rater.email);
         assertEquals("1-WashU", user.siteLocation.name);
+        assertEquals(":)", user.notes);
 
         user = users.get(1);
+        assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", user.externalId);
+        assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", user.password);
         assertEquals("000002", user.arcId);
+        assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", user.deviceId);
         assertEquals("EXR_Test2", user.name);
-        assertEquals(STUDY_ID_DIAN_ARC_EXR, user.studyId);
+        assertEquals("1-WashU", user.studyId);
         assertNotNull(user.phone);
         assertEquals("+12222222222", user.phone);
         assertEquals("rater1@test.edu", user.rater.email);
         assertEquals("1-WashU", user.siteLocation.name);
+        assertEquals("Dropping this participant 11/30/20 by Michelle", user.notes);
 
         user = users.get(2);
         assertEquals("200007", user.arcId);
+        assertEquals("E402924D-34CE-443B-9E53-C0466440D622", user.externalId);
+        assertEquals("E402924D-34CE-443B-9E53-C0466440D622", user.password);
+        assertEquals("E402924D-34CE-443B-9E53-C0466440D622", user.deviceId);
         assertEquals("HASD_Test2", user.name);
-        assertEquals(STUDY_ID_MAP_ARC_HASD, user.studyId);
+        assertEquals("2-SDP", user.studyId);
         assertNull(user.phone);
         assertEquals("rater2@test.com", user.rater.email);
         assertEquals("2-SDP", user.siteLocation.name);
+        assertEquals("", user.notes);
 
         user = users.get(3);
         assertEquals("555555", user.arcId);
+        assertEquals("7799c212-49aa-417a-8f8d-a7d50390d558", user.externalId);
+        assertEquals("7799c212-49aa-417a-8f8d-a7d50390d558", user.password);
+        assertEquals("7799c212-49aa-417a-8f8d-a7d50390d558", user.deviceId);
         assertEquals("HASD_Test1", user.name);
-        assertEquals(STUDY_ID_MAP_ARC_HASD, user.studyId);
+        assertEquals("2-SDP", user.studyId);
         assertNull(user.phone);
         assertEquals("rater2@test.com", user.rater.email);
         assertEquals("2-SDP", user.siteLocation.name);
+        assertEquals("Registered to site A", user.notes);
 
         user = users.get(4);
         assertEquals("626017", user.arcId);
+        assertEquals("193A86E0-892F-4230-9688-2D9E4B1556F9", user.externalId);
+        assertEquals("193A86E0-892F-4230-9688-2D9E4B1556F9", user.password);
+        assertEquals("193A86E0-892F-4230-9688-2D9E4B1556F9", user.deviceId);
         assertEquals("OBS_Test1", user.name);
-        assertEquals(STUDY_ID_DIAN_OBS_EXR, user.studyId);
+        assertEquals("3-Sage", user.studyId);
         assertNull(user.phone);
         assertEquals("rater3@test.edu", user.rater.email);
         assertEquals("3-Sage", user.siteLocation.name);
+        assertEquals("", user.notes);
 
+        // When a user does not have a device-id, but does have a site location
+        // We create a new account for them with the Arc ID.
         user = users.get(5);
-        assertEquals("999999", user.arcId);
-        assertEquals("NoRaterYet", user.name);
-        assertEquals(STUDY_ID_MAP_ARC_HASD, user.studyId);
+        assertEquals("777777", user.arcId);
+        assertEquals("777777", user.externalId);
+        assertNotNull(user.password);
+        assertEquals(20, user.password.length());
+        /// No device-id for user
+        assertEquals("No-Device-Id", user.deviceId);
+        assertNull(user.name);
+        assertEquals("3-Sage", user.studyId);
         assertNull(user.phone);
-        assertEquals(NO_RATER_ASSIGNED_YET_EMAIL, user.rater.email);
+        assertNull(user.rater);
         assertEquals("3-Sage", user.siteLocation.name);
+        assertEquals("", user.notes);
+
+        // When a user does not have a site location,
+        // we create a new account for them with the Arc ID
+        // And store it in the Happy-Medium-Errors project
+        user = users.get(6);
+        assertEquals("888888", user.arcId);
+        assertEquals("888888", user.externalId);
+        assertNotNull(user.password);
+        assertEquals(20, user.password.length());
+        // No device-id for user
+        assertEquals("No-Device-Id", user.deviceId);
+        assertNull(user.name);
+        assertEquals("Happy-Medium-Errors", user.studyId);
+        assertNull(user.phone);
+        assertNull(user.rater);
+        assertNull(user.siteLocation);
+        assertEquals(" Could not find site location ", user.notes);
+
+        user = users.get(7);
+        assertEquals("999999", user.arcId);
+        assertEquals("cef87c9d-5d9b-48a6-943a-48680fd57a2c", user.deviceId);
+        assertEquals("NoRaterYet", user.name);
+        assertEquals("3-Sage", user.studyId);
+        assertNull(user.phone);
+        assertNull(user.rater);
+        assertEquals("3-Sage", user.siteLocation.name);
+        assertEquals("", user.notes);
     }
 
     @Test
     public void test_completedTestMap() throws IOException {
         Map<String, HmDataModel.CompletedTestList> map =
-                MigrationUtil.completedTestMap(rootTestSessionsFolder);
+                MigrationUtil.completedTestMap(testSessionsFolder);
 
         assertNotNull(map);
         assertEquals(2, map.keySet().size());
@@ -241,9 +307,9 @@ public class MigrationTests {
     @Test
     public void test_createHmUserData() throws IOException {
         List<HmUserData> userList = MigrationUtil.createHmUserData(
-                rootTestSessionsFolder,
-                rootTestSessionsSchedulesFolder,
-                rootWakeSleepSchedulesFolder);
+                testSessionsFolder,
+                testSessionsSchedulesFolder,
+                wakeSleepSchedulesFolder);
 
         assertNotNull(userList);
         assertEquals(3, userList.size());
@@ -254,23 +320,23 @@ public class MigrationTests {
 
         assertNotNull(userList.get(0).completedTests);
         compareTestList(expectedUser000000, userList.get(0).completedTests.completed);
-        assertTrue(userList.get(0).testSessionSchedule.getAbsolutePath().endsWith(expectedSessionsSchedules000000));
-        assertTrue(userList.get(0).wakeSleepSchedule.getAbsolutePath().endsWith(expectedWakeSleepSchedules000000));
+        assertEquals(expectedSessionsSchedules000000, userList.get(0).testSessionSchedule.getFileName().toString());
+        assertEquals(expectedWakeSleepSchedules000000, userList.get(0).wakeSleepSchedule.getFileName().toString());
 
         assertNotNull(userList.get(1).completedTests);
         compareTestList(expectedUser000001, userList.get(1).completedTests.completed);
-        assertTrue(userList.get(1).testSessionSchedule.getAbsolutePath().endsWith(expectedSessionsSchedules000001));
-        assertTrue(userList.get(1).wakeSleepSchedule.getAbsolutePath().endsWith(expectedWakeSleepSchedules000001));
+        assertEquals(expectedSessionsSchedules000001, userList.get(1).testSessionSchedule.getFileName().toString());
+        assertEquals(expectedWakeSleepSchedules000001, userList.get(1).wakeSleepSchedule.getFileName().toString());
 
         // No completed tests, OK to be null, app will create empty list
         assertNull(userList.get(2).completedTests);
-        assertTrue(userList.get(2).testSessionSchedule.getAbsolutePath().endsWith(expectedSessionsSchedules000077));
-        assertTrue(userList.get(2).wakeSleepSchedule.getAbsolutePath().endsWith(expectedWakeSleepSchedules000077));
+        assertEquals(expectedSessionsSchedules000077, userList.get(2).testSessionSchedule.getFileName().toString());
+        assertEquals(expectedWakeSleepSchedules000077, userList.get(2).wakeSleepSchedule.getFileName().toString());
     }
 
     @Test
     public void test_sessionScheduleMap() throws IOException {
-        Map<String, File> map = MigrationUtil.sessionScheduleMap(rootTestSessionsSchedulesFolder);
+        Map<String, Path> map = MigrationUtil.sessionScheduleMap(testSessionsSchedulesFolder);
         assertNotNull(map);
         assertEquals(3, map.size());
 
@@ -281,16 +347,16 @@ public class MigrationTests {
         assertEquals("000001", keys.get(1));
         assertEquals("000077", keys.get(2));
 
-        assertTrue(map.get(keys.get(0)).getAbsolutePath().endsWith(expectedSessionsSchedules000000));
-        assertTrue(map.get(keys.get(1)).getAbsolutePath().endsWith(expectedSessionsSchedules000001));
+        assertEquals(expectedSessionsSchedules000000, map.get("000000").getFileName().toString());
+        assertEquals(expectedSessionsSchedules000001, map.get("000001").getFileName().toString());
 
         // This user had multiple test session schedules, but this is the most recent
-        assertTrue(map.get(keys.get(2)).getAbsolutePath().endsWith(expectedSessionsSchedules000077));
+        assertEquals(expectedSessionsSchedules000077, map.get("000077").getFileName().toString());
     }
 
     @Test
     public void test_wakeSleepScheduleMap() throws IOException {
-        Map<String, File> map = MigrationUtil.sessionScheduleMap(rootWakeSleepSchedulesFolder);
+        Map<String, Path> map = MigrationUtil.sessionScheduleMap(wakeSleepSchedulesFolder);
         assertNotNull(map);
         assertEquals(3, map.size());
 
@@ -301,11 +367,11 @@ public class MigrationTests {
         assertEquals("000001", keys.get(1));
         assertEquals("000077", keys.get(2));
 
-        assertTrue(map.get(keys.get(0)).getAbsolutePath().endsWith(expectedWakeSleepSchedules000000));
-        assertTrue(map.get(keys.get(1)).getAbsolutePath().endsWith(expectedWakeSleepSchedules000001));
+        assertEquals(expectedWakeSleepSchedules000000, map.get("000000").getFileName().toString());
+        assertEquals(expectedWakeSleepSchedules000001, map.get("000001").getFileName().toString());
 
         // This user had multiple wake sleep schedules, but this is the most recent
-        assertTrue(map.get(keys.get(2)).getAbsolutePath().endsWith(expectedWakeSleepSchedules000077));
+        assertEquals(expectedWakeSleepSchedules000077, map.get("000077").getFileName().toString());
     }
 
     @Test
@@ -316,21 +382,5 @@ public class MigrationTests {
         assertEquals("001234", MigrationUtil.fixParticipantId("1234"));
         assertEquals("012345", MigrationUtil.fixParticipantId("12345"));
         assertEquals("123456", MigrationUtil.fixParticipantId("123456"));
-    }
-
-    @Test
-    public void test_uniqueRaterIds() {
-        int count = 5;
-        List<String> uniqueRaterIds = MigrationUtil.assignUniqueRaterIds(count);
-        assertNotNull(uniqueRaterIds);
-        assertEquals(count, uniqueRaterIds.size());
-        for (int i = 0; i < count; i++) {
-            // All rater IDs must be 6 digits
-            assertEquals(6, uniqueRaterIds.get(i).length());
-            for (int j = 0; j < 6; j++) {
-                char c = uniqueRaterIds.get(i).substring(j, j+1).toCharArray()[0];
-                assertTrue(c >= '0' && c <= '9');
-            }
-        }
     }
 }

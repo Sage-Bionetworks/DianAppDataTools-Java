@@ -79,5 +79,7 @@ UserMigration/.gitignore
 
 Credentials/*
 
+Downloads/*
+
 #Mac OS files
 *.DS_Store
