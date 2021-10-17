@@ -55,7 +55,6 @@ public class PathsHelperTests {
     private final Path rootFileTestFolder = resourceDirectory.resolve("fileTests");
     private final Path folderA = rootFileTestFolder.resolve("FolderA");
     private final Path folderB = rootFileTestFolder.resolve("FolderB");
-    private final Path folderEmpty = rootFileTestFolder.resolve("Empty");
     private final Path folderUnitTestsDir = resourceDirectory.resolve("folderUnitTests");
 
     @Before
@@ -149,17 +148,12 @@ public class PathsHelperTests {
     public void test_getDirectoriesInDirectory() throws IOException {
         List<Path> paths = PathsHelper.getDirectoriesInDirectory(rootFileTestFolder);
         assertNotNull(paths);
-        assertEquals(4, paths.size());
+        assertEquals(3, paths.size());
         paths.sort((o1, o2) -> o1.getFileName().toString()
                 .compareTo(o2.getFileName().toString()));
-        assertEquals("Empty", paths.get(0).getFileName().toString());
-        assertEquals("FolderA", paths.get(1).getFileName().toString());
-        assertEquals("FolderB", paths.get(2).getFileName().toString());
-        assertEquals("FolderC", paths.get(3).getFileName().toString());
-
-        paths = PathsHelper.getFilesInDirectory(folderEmpty);
-        assertNotNull(paths);
-        assertEquals(0, paths.size());
+        assertEquals("FolderA", paths.get(0).getFileName().toString());
+        assertEquals("FolderB", paths.get(1).getFileName().toString());
+        assertEquals("FolderC", paths.get(2).getFileName().toString());
     }
 
     @Test
