@@ -26,6 +26,11 @@ You can also build the JAR using gradle with the following commands:
 `./gradlew jar`
 This will build DianUserMigration-Java/DataMigration/build/libs/DataMigration.jar
 
+# CI make docker image
+To create a docker image based on the migration code in this repository, you need to push to a branch within the branch folder **release** with with a unique branch name.  The branch name will be used as the docker image name tag and should be distinguishable from previous packages.
+
+The github action **docker_release.yml** will handle creating and deploying the docker image to Sage's github packages.
+
 # User Migration Background Info:
 To fully understand the migration process, there are a few terms that need described.
 
