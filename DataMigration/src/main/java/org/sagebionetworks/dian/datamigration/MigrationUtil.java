@@ -235,9 +235,7 @@ public class MigrationUtil {
 
         System.out.println("Test sessions parsing complete\nParsed " + migrationFileCount + " files.");
 
-        if (!failedToParseList.isEmpty() &&
-                // Temporary fix for bad data TODO: mdephillips remove after mjvatow fixes on synapse
-            !failedToParseList.get(0).equals("999999 test_session_schedule 2019-09-11T14-37-38Z.json")) {
+        if (!failedToParseList.isEmpty()) {
             String errorMsg = "Failed to parse file(s) " +
                     String.join(", ", failedToParseList);
             System.out.println(errorMsg);
