@@ -327,7 +327,7 @@ public class MigrationUtil {
                 }
 
                 HmUser userMatch = new HmUser();
-                userMatch.arcId = participant.participant_id;
+                userMatch.arcId = fixParticipantId(participant.participant_id);
 
                 // Assign the user's Study ID based on various parameters
                 assignStudyId(userMatch, site, deviceId, note);
