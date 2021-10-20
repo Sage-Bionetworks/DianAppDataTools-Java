@@ -232,7 +232,7 @@ public class MigrationTests {
         assertEquals("777777", user.arcId);
         assertEquals("777777", user.externalId);
         assertNotNull(user.password);
-        assertEquals(20, user.password.length());
+        assertEquals(9, user.password.length());
         /// No device-id for user
         assertEquals("No-Device-Id", user.deviceId);
         assertNull(user.name);
@@ -249,7 +249,7 @@ public class MigrationTests {
         assertEquals("888888", user.arcId);
         assertEquals("888888", user.externalId);
         assertNotNull(user.password);
-        assertEquals(20, user.password.length());
+        assertEquals(9, user.password.length());
         // No device-id for user
         assertEquals("No-Device-Id", user.deviceId);
         assertNull(user.name);

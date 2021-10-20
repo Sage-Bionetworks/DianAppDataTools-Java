@@ -15,7 +15,7 @@ public class SecureTokenGeneratorTests {
         for (int i = 0; i < 10000; i++) {
             String password = SecureTokenGenerator.BRIDGE_PASSWORD.nextBridgePassword();
             assertNotNull(password);
-            assertEquals(20, password.length());
+            assertEquals(9, password.length());
             assertTrue(SecureTokenGenerator.BRIDGE_PASSWORD.isValidBridgePassword(password));
         }
     }
