@@ -94,7 +94,7 @@ There are many Arc IDs that have been marked as belonging to a site location, bu
 
 There is no data to migrate for this account, so it is safe to create a new, unused External ID for them at this time.
 
-Their External ID will be their Arc ID, and the migration code will generate a unique secure password for their account, that it will store in the attribute **SIGN_IN_TOKEN**, so that site location study admins can assign a participant to that Arc ID at some future point.
+Their External ID will be their Arc ID, and the migration code will generate a unique secure password for their account, that it will store in the attribute **VERIFICATION_CODE**, so that site location study admins can assign a participant to that Arc ID at some future point.
 
 These users, once authenticated in the app, will begin the app as if they are a new user who just signed up.
 

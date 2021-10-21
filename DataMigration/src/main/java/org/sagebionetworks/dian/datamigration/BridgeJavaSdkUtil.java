@@ -35,7 +35,7 @@ public class BridgeJavaSdkUtil {
     private static final String ATTRIBUTE_ARC_ID = "ARC_ID";
     private static final String ATTRIBUTE_RATER_EMAIL = "RATER_EMAIL";
     private static final String ATTRIBUTE_SITE_NOTES = "SITE_NOTES";
-    private static final String ATTRIBUTE_SIGN_IN_TOKEN = "SIGN_IN_TOKEN";
+    private static final String ATTRIBUTE_VERIFICATION_CODE = "VERIFICATION_CODE";
     private static final String ATTRIBUTE_PHONE_NUM = "PHONE_NUMBER";
     private static final String ATTRIBUTE_IS_MIGRATED = "IS_MIGRATED";
     private static final String ATTRIBUTE_VALUE_FALSE = "false";
@@ -279,7 +279,7 @@ public class BridgeJavaSdkUtil {
         // A user's password is stored securely as an attribute for study managers to see.
         // They will use this to sign their study participants in.
         // User attributes are encrypted at rest and during transit.
-        attributeMap.put(ATTRIBUTE_SIGN_IN_TOKEN, user.password);
+        attributeMap.put(ATTRIBUTE_VERIFICATION_CODE, user.password);
 
         // Make sure the attributes are supported by Bridge
         bridgifyAttributes(attributeMap);

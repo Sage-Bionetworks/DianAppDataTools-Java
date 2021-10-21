@@ -74,7 +74,7 @@ public class BridgeJavaSdkUtilTests {
         Map<String, String> attributes = BridgeJavaSdkUtil.newUserAttributes(user);
         assertNotNull(attributes);
         assertEquals("000000", attributes.get("ARC_ID"));
-        assertEquals(password, attributes.get("SIGN_IN_TOKEN"));
+        assertEquals(password, attributes.get("VERIFICATION_CODE"));
         assertEquals("", attributes.get("PHONE_NUMBER"));
         assertEquals("", attributes.get("SITE_NOTES"));
         assertEquals("false", attributes.get("IS_MIGRATED"));
@@ -95,7 +95,7 @@ public class BridgeJavaSdkUtilTests {
         Map<String, String> attributes = BridgeJavaSdkUtil.newUserAttributes(user);
         assertNotNull(attributes);
         assertEquals("000000", attributes.get("ARC_ID"));
-        assertEquals(password, attributes.get("SIGN_IN_TOKEN"));
+        assertEquals(password, attributes.get("VERIFICATION_CODE"));
         assertEquals("+11111111111", attributes.get("PHONE_NUMBER"));
         assertEquals("Notes", attributes.get("SITE_NOTES"));
         assertEquals("false", attributes.get("IS_MIGRATED"));
