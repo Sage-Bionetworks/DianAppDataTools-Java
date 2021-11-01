@@ -23,7 +23,7 @@ dependencies {
 
 jar {
     manifest {
-        attributes("Main-Class": "org.sagebionetoworks.dian.datamigration.DataMigration")
+        attributes("Main-Class": "org.sagebionetworks.dian.datamigration.DataMigration")
     }
     from { configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
 }
