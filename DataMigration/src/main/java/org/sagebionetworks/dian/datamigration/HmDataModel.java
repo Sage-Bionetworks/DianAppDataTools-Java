@@ -41,6 +41,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.sagebionetworks.dian.datamigration.MigrationUtil.ERROR_STUDY_ID;
+import static org.sagebionetworks.dian.datamigration.MigrationUtil.NO_DEVICE_ID;
+
 /**
  * This file contains all the data models used by HappyMedium,
  * as well as the data models we use to transfer HM users
@@ -77,6 +80,86 @@ public class HmDataModel {
         public TableRow.Rater rater;
         // These are the notes associated with a user
         public String notes;
+
+        public HmUser() {}
+
+        public HmUser(TableRow.Participant participant,
+                      TableRow.Rater rater,
+                      TableRow.SiteLocation site,
+                      TableRow.ParticipantNotes notes,
+                      TableRow.ParticipantPhone phone,
+                      TableRow.ParticipantDeviceId participantDeviceId) {
+
+            this.arcId = MigrationUtil.fixParticipantId(participant.participant_id);
+
+            // If the rater is null at this point,
+            // that means HM has created the user,
+            // but they have not yet signed in.
+            // Therefore, there is nothing to migrate.
+            this.rater = rater;
+
+            // HASD users do not have phone numbers,
+            // they only have Arc ID, and their pw is their RaterID
+            if (phone != null) {
+                this.phone = phone.phone;
+            }
+
+            // This is only used in Sage QA,
+            // HM does not store a user's name
+            if (participant.name != null) {
+                this.name = participant.name;
+            }
+
+            // Assign notes or empty string
+            if (notes != null) {
+                this.notes = notes.note;
+            }
+
+            // In this case, there is nothing we can do for migrating the user.
+            // They are an invalid user that does not belong to a site yet.
+            // Send them to the Happy Medium Error sub-study for tracking purposes.
+            if (site == null || site.name == null) {
+                String errorNote = " Could not find site location ";
+                System.out.println(errorNote + " for user " + this.arcId);
+                if (this.notes != null) {
+                    errorNote = this.notes + errorNote;
+                }
+
+                this.studyId = ERROR_STUDY_ID;
+                this.externalId = this.arcId;
+                this.password = PasswordGenerator.INSTANCE.nextPassword();
+                this.deviceId = participantDeviceId == null ?
+                        NO_DEVICE_ID : participantDeviceId.device_id;
+                this.notes = errorNote;
+                return;
+            }
+
+            site.name = MigrationUtil.bridgifySiteName(site.name);
+            // We can assign these for the remaining cases
+            this.studyId = site.name;
+            this.siteLocation = site;
+
+            // In this case, a user has been created for a site location,
+            // but that user has not signed in yet.
+            // In this case, make a new account that the site can use later.
+            if (participantDeviceId == null) {
+                System.out.println("Unused user for site " + this.arcId);
+                this.deviceId = NO_DEVICE_ID;
+                this.externalId = this.arcId;
+                this.password = PasswordGenerator.INSTANCE.nextPassword();
+                return;
+            }
+
+            // In this case, the user has a valid device-id,
+            // which means they have been using the HappyMedium app.
+            // We need to create a temporary data holding account that only they can access to.
+            // When they update to the Sage Bridge app, they can use their
+            // device-id to download their data and create a new account on Bridge.
+            System.out.println("Migrating user account as device-id " + this.arcId);
+            this.deviceId = participantDeviceId.device_id;
+            this.externalId = this.deviceId;
+            this.password = this.deviceId;
+        }
     }
 
     /**
@@ -228,6 +311,12 @@ public class HmDataModel {
             // There are three studies we are concerned about
             // Map Arc (HASD), Dian Arc (EXR), and Dian Obs (EXR)
             public String study_id;
+
+            public Participant() {}
+            public Participant(String tableId, String arcId) {
+                this.id = tableId;
+                this.participant_id = arcId;
+            }
         }
 
         public static String STUDY_ID_DIAN_ARC_EXR = "1";
@@ -242,6 +331,15 @@ public class HmDataModel {
             public String participant;
             // This site_location is the SiteLocationTableRow id field
             public String site_location;
+
+            public ParticipantSiteLocation() {}
+            public ParticipantSiteLocation(String tableId,
+                                           String participantTableId,
+                                           String siteTableId) {
+                this.id = tableId;
+                this.participant = participantTableId;
+                this.site_location = siteTableId;
+            }
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -252,6 +350,13 @@ public class HmDataModel {
             public String participant_id;
             // Internationally formatted phone number, always starting with "+"
             public String phone;
+
+            public ParticipantPhone() {}
+            public ParticipantPhone(String tableId, String participantTableId, String phoneNumber) {
+                this.id = tableId;
+                this.participant_id = participantTableId;
+                this.phone = phoneNumber;
+            }
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -262,6 +367,12 @@ public class HmDataModel {
             public String participant;
             // Internationally formatted phone number, always starting with "+"
             public Double created_at;
+
+            public ParticipantRater() {}
+            public ParticipantRater(String registeredBy, String participantTableId) {
+                this.registered_by = registeredBy;
+                this.participant = participantTableId;
+            }
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -272,6 +383,12 @@ public class HmDataModel {
             public String study_id;
             // The rater's email
             public String email;
+
+            public Rater() {}
+            public Rater(String tableId, String raterEmail) {
+                this.id = tableId;
+                this.email = raterEmail;
+            }
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -282,6 +399,13 @@ public class HmDataModel {
             public String participant;
             // The participant's most recent device id
             public String device_id;
+
+            public ParticipantDeviceId() {}
+            public ParticipantDeviceId(String tableId, String participantTableId, String deviceId) {
+                this.id = tableId;
+                this.participant = participantTableId;
+                this.device_id = deviceId;
+            }
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -292,6 +416,13 @@ public class HmDataModel {
             public String participant;
             // The participant's notes
             public String note;
+
+            public ParticipantNotes() {}
+            public ParticipantNotes(String tableId, String participantTableId, String notes) {
+                this.id = tableId;
+                this.participant = participantTableId;
+                this.note = notes;
+            }
         }
     }
 
@@ -307,7 +438,16 @@ public class HmDataModel {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TestSession {
 
-        public TestSession() {}
+        public TestSession() {
+
+        }
+        public TestSession(String participant, int week, int day, int session, int isFinished) {
+            this.participant_id = participant;
+            this.week = week;
+            this.day = day;
+            this.session = session;
+            this.finished_session = isFinished;
+        }
 
         public String participant_id;
         public int finished_session; // 1 == finished, 0 == unfinished
@@ -317,7 +457,7 @@ public class HmDataModel {
         public double session_date;
 
         @Override
-        public boolean equals(Object v) {
+        public final boolean equals(Object v) {
             boolean retVal = false;
 
             if (v instanceof TestSession) {
@@ -331,7 +471,7 @@ public class HmDataModel {
         }
 
         @Override
-        public int hashCode() {
+        public final int hashCode() {
             return (String.valueOf(week) +
                     String.valueOf(day) +
                     String.valueOf(session)).hashCode();

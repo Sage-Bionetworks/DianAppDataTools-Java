@@ -326,30 +326,7 @@ public class MigrationUtil {
                     phone = TableRow.findParticipantPhone(user.id, phoneList);
                 }
 
-                HmUser userMatch = new HmUser();
-                userMatch.arcId = fixParticipantId(participant.participant_id);
-
-                // Assign the user's Study ID based on various parameters
-                assignStudyId(userMatch, site, deviceId, note);
-
-                // If the rater is null at this point,
-                // that means HM has created the user,
-                // but they have not yet signed in.
-                // Therefore, there is nothing to migrate.
-                userMatch.rater = rater;
-
-                // HASD users do not have phone numbers,
-                // they only have Arc ID, and their pw is their RaterID
-                if (phone != null) {
-                    userMatch.phone = phone.phone;
-                }
-
-                // This is only used in Sage QA,
-                // HM does not store a user's name
-                if (participant.name != null) {
-                    userMatch.name = participant.name;
-                }
-
+                HmUser userMatch = new HmUser(participant, rater, site, note, phone, deviceId);
                 userList.add(userMatch);
             }
 
@@ -360,56 +337,6 @@ public class MigrationUtil {
         data.sort((u1, u2) -> u1.arcId.compareTo(u2.arcId));
 
         return data;
-    }
-
-    public static void assignStudyId(HmUser user, SiteLocation site,
-                                     ParticipantDeviceId deviceId, ParticipantNotes notes) {
-
-        // Assign notes or empty string
-        String notesStr = notes == null ? "" : notes.note;
-
-        // In this case, there is nothing we can do for migrating the user.
-        // They are an invalid user that does not belong to a site yet.
-        // Send them to the Happy Medium Error sub-study for tracking purposes.
-        if (site == null || site.name == null) {
-            String errorNote = " Could not find site location ";
-            System.out.println(errorNote + " for user " + user.arcId);
-            notesStr += errorNote;
-
-            user.studyId = ERROR_STUDY_ID;
-            user.externalId = user.arcId;
-            user.password = SecureTokenGenerator.BRIDGE_PASSWORD.nextBridgePassword();
-            user.deviceId = deviceId == null ? NO_DEVICE_ID : deviceId.device_id;
-            user.notes = notesStr;
-            return;
-        }
-
-        site.name = bridgifySiteName(site.name);
-        // We can assign these for the remaining cases
-        user.studyId = site.name;
-        user.notes = notesStr;
-        user.siteLocation = site;
-
-        // In this case, a user has been created for a site location,
-        // but that user has not signed in yet.
-        // In this case, make a new account that the site can use later.
-        if (deviceId == null) {
-            System.out.println("Unused user for site " + user.arcId);
-            user.deviceId = NO_DEVICE_ID;
-            user.externalId = user.arcId;
-            user.password = SecureTokenGenerator.BRIDGE_PASSWORD.nextBridgePassword();
-            return;
-        }
-
-        // In this case, the user has a valid device-id,
-        // which means they have been using the HappyMedium app.
-        // We need to create a temporary data holding account that only they can access to.
-        // When they update to the Sage Bridge app, they can use their
-        // device-id to download their data and create a new account on Bridge.
-        System.out.println("Migrating user account as device-id " + user.arcId);
-        user.deviceId = deviceId.device_id;
-        user.externalId = user.deviceId;
-        user.password = user.deviceId;
     }
 
     /**

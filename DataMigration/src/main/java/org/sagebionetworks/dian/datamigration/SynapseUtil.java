@@ -195,7 +195,7 @@ public class SynapseUtil {
     }
 
     /**
-     * @param parentId of the folder to look in for EntityHeaders
+     * @param parentId of the folder to look for in EntityHeaders
      * @param type of files to look for, usually folder or file
      * @return the full list of entity headers on all pages of result
      */
@@ -208,14 +208,14 @@ public class SynapseUtil {
         fileRequest.setParentId(parentId);
         fileRequest.setIncludeTypes(Lists.newArrayList(type));
 
-        while (fileRequest != null) {
+        while (true) {
             EntityChildrenResponse fileResponse = synapse.getEntityChildren(fileRequest);
             if (fileResponse.getPage() != null) {
                 entityHeaderList.addAll(fileResponse.getPage());
             }
             String nextPage = fileResponse.getNextPageToken();
             if (nextPage == null) {
-                fileRequest = null;
+                break;
             } else {
                 fileRequest.setNextPageToken(nextPage);
             }
@@ -279,9 +279,5 @@ public class SynapseUtil {
             }
         }
         return null;
-    }
-
-    public static class DianFiles {
-        public Map<DownloadFolder, List<FileHandleAssociation>> filesToDownloadMap;
     }
 }

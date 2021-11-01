@@ -41,14 +41,6 @@ public class BridgeJavaSdkUtil {
     private static final String ATTRIBUTE_VALUE_FALSE = "false";
     private static final String ATTRIBUTE_VALUE_TRUE = "true";
 
-    // User attributes that have important info redacted
-    private static final Map<String, String> MIGRATED_USER_ATTRIBUTES = ImmutableMap.of(
-            ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_TRUE,
-            ATTRIBUTE_RATER_EMAIL, "",
-            ATTRIBUTE_SITE_NOTES, "",
-            ATTRIBUTE_PHONE_NUM, ""
-    );
-
     // The name of the rater when one has not been assigned yet
     public static String NO_RATER_ASSIGNED_YET_EMAIL = "No rater assigned yet";
 
@@ -95,8 +87,7 @@ public class BridgeJavaSdkUtil {
                 .withAcceptLanguage(Lists.newArrayList("en")).build();
 
         AuthenticationApi authApi = clientManager.getClient(AuthenticationApi.class);
-        UserSessionInfo sessionInfo = authApi.signInV4(signIn).execute().body();
-        userSessionInfo = clientManager.getSessionOfClients();
+        userSessionInfo = authApi.signInV4(signIn).execute().body();
         researcherApi = clientManager.getClient(ForResearchersApi.class);
         reportsApi = clientManager.getClient(ParticipantReportsApi.class);
         participantsApi = clientManager.getClient(ParticipantsApi .class);
@@ -195,9 +186,13 @@ public class BridgeJavaSdkUtil {
         reportsApi.deleteAllParticipantReportRecords(userId, TEST_SCHEDULE_REPORT_ID).execute();
         reportsApi.deleteAllParticipantReportRecords(userId, AVAILABILITY_REPORT_ID).execute();
 
-        // Set the new attributes to be blank, except for IS_MIGRATED = true
+        // Set the new attributes to be blank, except for IS_MIGRATED = true, and ARC_ID
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_TRUE);
+        attributes.put(ATTRIBUTE_ARC_ID, user.arcId);
+
         StudyParticipant newParticipant = new StudyParticipant()
-                .attributes(MIGRATED_USER_ATTRIBUTES);
+                .attributes(attributes);
 
         participantsApi.updateParticipant(userId, newParticipant).execute();
     }
@@ -255,25 +250,21 @@ public class BridgeJavaSdkUtil {
      * @return the user attributes to attach to the SignUp object.
      */
     protected static Map<String, String> newUserAttributes(HmDataModel.HmUser user) {
+
+        Map<String, String> attributeMap = new HashMap<>();
         String raterEmail = NO_RATER_ASSIGNED_YET_EMAIL;
         if (user.rater != null && user.rater.email != null) {
             raterEmail = user.rater.email;
         }
-        String notes = "";
         if (user.notes != null) {
-            notes = user.notes;
+            attributeMap.put(ATTRIBUTE_SITE_NOTES, user.notes);
         }
-        String phoneNum = "";
         if (user.phone != null) {
-            phoneNum = user.phone;
+            attributeMap.put(ATTRIBUTE_PHONE_NUM, user.phone);
         }
-
-        Map<String, String> attributeMap = new HashMap<>();
         attributeMap.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_FALSE);
         attributeMap.put(ATTRIBUTE_ARC_ID, user.arcId);
         attributeMap.put(ATTRIBUTE_RATER_EMAIL, raterEmail);
-        attributeMap.put(ATTRIBUTE_SITE_NOTES, notes);
-        attributeMap.put(ATTRIBUTE_PHONE_NUM, phoneNum);
 
         // This is a critical part of the user management system for the DIAN project.
         // A user's password is stored securely as an attribute for study managers to see.

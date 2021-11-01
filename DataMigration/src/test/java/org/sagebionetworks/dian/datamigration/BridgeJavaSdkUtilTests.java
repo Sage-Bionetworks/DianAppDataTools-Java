@@ -47,6 +47,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class BridgeJavaSdkUtilTests {
@@ -75,8 +76,8 @@ public class BridgeJavaSdkUtilTests {
         assertNotNull(attributes);
         assertEquals("000000", attributes.get("ARC_ID"));
         assertEquals(password, attributes.get("VERIFICATION_CODE"));
-        assertEquals("", attributes.get("PHONE_NUMBER"));
-        assertEquals("", attributes.get("SITE_NOTES"));
+        assertNull(attributes.get("PHONE_NUMBER"));
+        assertNull(attributes.get("SITE_NOTES"));
         assertEquals("false", attributes.get("IS_MIGRATED"));
         assertEquals("No rater assigned yet", attributes.get("RATER_EMAIL"));
     }

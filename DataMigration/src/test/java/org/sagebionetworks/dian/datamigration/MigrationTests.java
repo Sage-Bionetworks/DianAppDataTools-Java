@@ -45,6 +45,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.sagebionetworks.dian.datamigration.MigrationUtil.*;
 import static org.sagebionetworks.dian.datamigration.HmDataModel.*;
 
@@ -154,15 +155,27 @@ public class MigrationTests {
         assertEquals(filename, "sage_qa_staging-participant_note-10-11-21.json");
     }
 
-     @Test
+    @Test
     public void test_createHmUserRaterData() throws IOException {
         List<Path> participantPathList = new ArrayList<>();
-        participantPathList.add(participantsFolder);
 
-        List<HmUser> users = MigrationUtil
-                .createHmUserRaterData(participantPathList);
+        // Test that the app throws a null pointer exception with a null path in the list
+        participantPathList.add(null);
+        boolean nullExceptionCaught = false;
+        List<HmUser> users;
+        try {
+            users = MigrationUtil.createHmUserRaterData(participantPathList);
+        } catch (NullPointerException e) {
+            nullExceptionCaught = true;
+        }
+        assertTrue(nullExceptionCaught);
+
+        participantPathList.clear();
+        participantPathList.add(participantsFolder);
+        users = MigrationUtil.createHmUserRaterData(participantPathList);
+
         assertNotNull(users);
-        assertEquals(8, users.size());
+        assertEquals(9, users.size());
 
         HmUser user = users.get(0);
         assertEquals("000001", user.arcId);
@@ -177,7 +190,18 @@ public class MigrationTests {
         assertEquals("1-WashU", user.siteLocation.name);
         assertEquals(":)", user.notes);
 
-        user = users.get(1);
+         user = users.get(1);
+         assertEquals("000001", user.arcId);
+         assertEquals("abc87c9d-5d9b-48a6-943a-48680fd57a2c", user.deviceId);
+         assertNull(user.name);
+         assertEquals("3-Sage", user.studyId);
+         assertEquals("3-Sage", user.studyId);
+         assertNull(user.phone);
+         assertEquals("rater3@test.edu", user.rater.email);
+         assertEquals("3-Sage", user.siteLocation.name);
+         assertNull(user.notes);
+
+        user = users.get(2);
         assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", user.externalId);
         assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", user.password);
         assertEquals("000002", user.arcId);
@@ -190,7 +214,7 @@ public class MigrationTests {
         assertEquals("1-WashU", user.siteLocation.name);
         assertEquals("Dropping this participant 11/30/20 by Michelle", user.notes);
 
-        user = users.get(2);
+        user = users.get(3);
         assertEquals("200007", user.arcId);
         assertEquals("E402924D-34CE-443B-9E53-C0466440D622", user.externalId);
         assertEquals("E402924D-34CE-443B-9E53-C0466440D622", user.password);
@@ -200,9 +224,9 @@ public class MigrationTests {
         assertNull(user.phone);
         assertEquals("rater2@test.com", user.rater.email);
         assertEquals("2-SDP", user.siteLocation.name);
-        assertEquals("", user.notes);
+        assertNull(user.notes);
 
-        user = users.get(3);
+        user = users.get(4);
         assertEquals("555555", user.arcId);
         assertEquals("7799c212-49aa-417a-8f8d-a7d50390d558", user.externalId);
         assertEquals("7799c212-49aa-417a-8f8d-a7d50390d558", user.password);
@@ -214,7 +238,7 @@ public class MigrationTests {
         assertEquals("2-SDP", user.siteLocation.name);
         assertEquals("Registered to site A", user.notes);
 
-        user = users.get(4);
+        user = users.get(5);
         assertEquals("626017", user.arcId);
         assertEquals("193A86E0-892F-4230-9688-2D9E4B1556F9", user.externalId);
         assertEquals("193A86E0-892F-4230-9688-2D9E4B1556F9", user.password);
@@ -224,11 +248,11 @@ public class MigrationTests {
         assertNull(user.phone);
         assertEquals("rater3@test.edu", user.rater.email);
         assertEquals("3-Sage", user.siteLocation.name);
-        assertEquals("", user.notes);
+        assertNull(user.notes);
 
         // When a user does not have a device-id, but does have a site location
         // We create a new account for them with the Arc ID.
-        user = users.get(5);
+        user = users.get(6);
         assertEquals("777777", user.arcId);
         assertEquals("777777", user.externalId);
         assertNotNull(user.password);
@@ -240,12 +264,12 @@ public class MigrationTests {
         assertNull(user.phone);
         assertNull(user.rater);
         assertEquals("3-Sage", user.siteLocation.name);
-        assertEquals("", user.notes);
+        assertNull(user.notes);
 
         // When a user does not have a site location,
         // we create a new account for them with the Arc ID
         // And store it in the Happy-Medium-Errors project
-        user = users.get(6);
+        user = users.get(7);
         assertEquals("888888", user.arcId);
         assertEquals("888888", user.externalId);
         assertNotNull(user.password);
@@ -259,7 +283,7 @@ public class MigrationTests {
         assertNull(user.siteLocation);
         assertEquals(" Could not find site location ", user.notes);
 
-        user = users.get(7);
+        user = users.get(8);
         assertEquals("999999", user.arcId);
         assertEquals("cef87c9d-5d9b-48a6-943a-48680fd57a2c", user.deviceId);
         assertEquals("NoRaterYet", user.name);
@@ -267,7 +291,7 @@ public class MigrationTests {
         assertNull(user.phone);
         assertNull(user.rater);
         assertEquals("3-Sage", user.siteLocation.name);
-        assertEquals("", user.notes);
+        assertNull(user.notes);
     }
 
     @Test
@@ -382,5 +406,14 @@ public class MigrationTests {
         assertEquals("001234", MigrationUtil.fixParticipantId("1234"));
         assertEquals("012345", MigrationUtil.fixParticipantId("12345"));
         assertEquals("123456", MigrationUtil.fixParticipantId("123456"));
+        assertEquals("123456", MigrationUtil.fixParticipantId("1234567"));
+    }
+
+    @Test
+    public void test_bridgifySiteName() {
+        String siteName = null;
+        assertNull(bridgifySiteName(siteName));
+        siteName = "St.Louis' Site";
+        assertEquals("StLouisSite", MigrationUtil.bridgifySiteName(siteName));
     }
 }

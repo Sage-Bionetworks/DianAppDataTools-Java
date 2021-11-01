@@ -13,7 +13,7 @@ Before you can run the code, your environment must have the following environmen
 **SYN_PAT** - Your Synapse access token to your account that has read/download access for the dian uat or dian prod Synapse projects.
 **SYN_PROJ_ID** - The Synapse Project ID for dian uat or dian prod.
 
-# Building the code
+# Building and running the code
 
 This project was created and maintained using Android Studio.  I imagine it could be imported into Eclipse as well, but I have not tested that setup.
 

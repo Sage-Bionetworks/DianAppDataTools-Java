@@ -106,8 +106,6 @@ public class PathsHelperTests {
             e = e2;
         }
         assertNotNull(e);
-
-        PathsHelper.deleteDirectoryRecursively(folderUnitTestsDir);
     }
 
     @Test

@@ -76,5 +76,18 @@
         "os_version": "10",
         "os_type": "Android",
         "raw_device_info": "Android|Google Pixel 2|10|29|google\/walleye\/walleye:10\/QQ1A.191205.008\/5974827:user\/release-keys"
+    },
+    {
+        "id": "7",
+        "participant": "9",
+        "device_id": "abc87c9d-5d9b-48a6-943a-48680fd57a2c",
+        "device_type": "Google Pixel 1",
+        "active": "1",
+        "created_at": "1576165222",
+        "updated_at": "1576165222",
+        "app_version": "0.0.0",
+        "os_version": "10",
+        "os_type": "Android",
+        "raw_device_info": "Android|Google Pixel 2|10|29|google\/walleye\/walleye:10\/QQ1A.191205.008\/5974827:user\/release-keys"
     }
 ]
