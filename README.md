@@ -72,7 +72,7 @@ The solution to the security and data validation issues outlined above are refle
 As outlined earlier, HM communicated Arc ID and Rater ID passwords through email.  We are no longer supporting that.  Each site location manager will need to create a Synapse account.  After they create a Synapse account, they will be given access to the DIAN bridge project, and only given permission to view their sub-study and its participants.  WashU will not be able to view any of the sub-studies, besides their own.
 
 # Account Migration to Sage's Bridge Server
-Before the migration can complete successfully, a sub-study must be created for each site location on Bridge.  Each user we create, must belong to a sub-study.
+Before the migration can complete successfully, a sub-study must be created for each site location on Bridge.  Each user we create must belong to a sub-study.
 
 Depending on the state of the user, there are three migration scenarios that can occur.
 ### Migrating existing users
@@ -108,7 +108,7 @@ Ideally, this would never happen on the production server, but if it does, we wi
 These users will be created the same way as the section above, if the user has no Device ID.
 
 # Account parsing from HM's data export
-HM exports all the participant data needed to do this process.  The staging QA data is available on Synapse Synapse.  The two relevant files are:
+HM exports all the participant data needed to do this process.  The staging QA data is available on Synapse.  The two relevant files are:
 ```
 hasd_staging_participant_json.zip
 exr_stating_participant_json.zip
@@ -126,14 +126,14 @@ sage_qa_staging-participant_note-10-11-21.json
 sage_qa_staging_participant_rater-9-21-21.json
 ```
 
-The migration code will download and unzips these files from Synapse, parse the JSON, and build the data models representing each individual user that exists on HM's servers.
+The migration code will download and unzip these files from Synapse, parse the JSON, and build the data models representing each individual user that exists on HM's servers.
 
 # HM Data Model
 ### Wake Sleep Schedule
-The availability schedule defines when a user is available to do their testing. It is a JSON model, and while there can be multiple per user.  We only need to read the most recent.
+The availability schedule defines when a user is available to do their testing. It is a JSON model, and while there can be multiple per user, we only need to read the most recent.
 
 ### Test Schedule
-The test session schedule defines when a user is available to do their testing. It is a JSON model, and while there can be multiple per user.  We only need to read the most recent.
+The test session schedule defines when a user must do their testing. It is a JSON model, and while there can be multiple per user, we only need to read the most recent.
 
 ### Completed Test Sessions
 On HM’s server, earnings was calculated using a rest API call by checking which test sessions were completed by the user for each testing cycle.
