@@ -1,6 +1,7 @@
 package org.sagebionetworks.dian.datamigration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 
@@ -17,7 +18,6 @@ import org.sagebionetworks.bridge.rest.model.SharingScope;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
-import org.sagebionetworks.bridge.rest.model.UserSessionInfo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,9 +37,9 @@ public class BridgeJavaSdkUtil {
     private static final String ATTRIBUTE_SITE_NOTES = "SITE_NOTES";
     private static final String ATTRIBUTE_VERIFICATION_CODE = "VERIFICATION_CODE";
     private static final String ATTRIBUTE_PHONE_NUM = "PHONE_NUMBER";
-    private static final String ATTRIBUTE_IS_MIGRATED = "IS_MIGRATED";
-    private static final String ATTRIBUTE_VALUE_FALSE = "false";
-    private static final String ATTRIBUTE_VALUE_TRUE = "true";
+    protected static final String ATTRIBUTE_IS_MIGRATED = "IS_MIGRATED";
+    protected static final String ATTRIBUTE_VALUE_FALSE = "false";
+    protected static final String ATTRIBUTE_VALUE_TRUE = "true";
 
     // The name of the rater when one has not been assigned yet
     public static String NO_RATER_ASSIGNED_YET_EMAIL = "No rater assigned yet";
@@ -58,11 +58,18 @@ public class BridgeJavaSdkUtil {
 
     private static ObjectMapper objectMapper = new ObjectMapper();
 
-    private static UserSessionInfo userSessionInfo;
-    private static ClientManager clientManager;
     private static ForResearchersApi researcherApi;
     private static ParticipantReportsApi reportsApi;
     private static ParticipantsApi participantsApi;
+
+    @VisibleForTesting
+    protected static void mockInitialize(ForResearchersApi mockResearcherApi,
+                                         ParticipantReportsApi mockReportsApi,
+                                         ParticipantsApi mockParticipantsApi) {
+        researcherApi = mockResearcherApi;
+        reportsApi = mockReportsApi;
+        participantsApi = mockParticipantsApi;
+    }
 
     /**
      * Authenticates the admin user using the environmental vars for email/password.
@@ -81,13 +88,12 @@ public class BridgeJavaSdkUtil {
                 .email(BRIDGE_EMAIL)
                 .password(BRIDGE_PW);
 
-        clientManager = new ClientManager.Builder()
+        ClientManager clientManager = new ClientManager.Builder()
                 .withClientInfo(clientInfo)
                 .withSignIn(signIn)
                 .withAcceptLanguage(Lists.newArrayList("en")).build();
 
         AuthenticationApi authApi = clientManager.getClient(AuthenticationApi.class);
-        userSessionInfo = authApi.signInV4(signIn).execute().body();
         researcherApi = clientManager.getClient(ForResearchersApi.class);
         reportsApi = clientManager.getClient(ParticipantReportsApi.class);
         participantsApi = clientManager.getClient(ParticipantsApi .class);
@@ -107,29 +113,18 @@ public class BridgeJavaSdkUtil {
                     .getParticipantByExternalId(user.externalId, false).execute().body();
 
             if (isParticipantMigrated(participant, user)) {
-                clearMigrationData(participant, user);
+                clearMigrationData(participant.getId(), user);
             } else {
-                updateMigrationAccount(participant, user, data);
+                System.out.println("Updating migration data for user " + user.externalId);
+                writeUserReports(participant.getId(), data);
             }
         } catch (EntityNotFoundException exception) {
             // Temporary migration user has not been created yet
-            createMigrationAccountWithData(user, data);
+            System.out.println("Creating migration account for user " + user.externalId);
+            SignUp signUp = createSignUpObject(user);
+            String userId = researcherApi.createParticipant(signUp).execute().body().getIdentifier();
+            writeUserReports(userId, data);
         }
-    }
-
-    /**
-     * Create a user on Bridge
-     * @param user HappyMedium user to create on Bridge
-     * @param data associated with the user, migrated from HappyMedium's server
-     * @throws IOException if something goes wrong creating the account, or writing reports
-     */
-    private static void createMigrationAccountWithData(
-            HmDataModel.HmUser user, HmDataModel.HmUserData data) throws IOException {
-
-        System.out.println("Creating migration account for user " + user.externalId);
-        SignUp signUp = createSignUpObject(user);
-        String userId = researcherApi.createParticipant(signUp).execute().body().getIdentifier();
-        writeUserReports(userId, data);
     }
 
     /**
@@ -156,29 +151,15 @@ public class BridgeJavaSdkUtil {
     }
 
     /**
-     * Updates the user reports to their up to date values
-     * @param participant from Bridge
-     * @param user HappyMedium user
-     * @param data to write to the user's reports
-     * @throws IOException if something goes wrong deleting user report data
-     */
-    private static void updateMigrationAccount(
-            StudyParticipant participant, HmDataModel.HmUser user,
-            HmDataModel.HmUserData data) throws IOException {
-        System.out.println("Updating migration data for user " + user.externalId);
-        writeUserReports(participant.getId(), data);
-    }
-
-    /**
      * This will clear the data on the temporary data holding account.
      * This should only be called on a user with device-id as their external id.
-     * @param participant from bridge
+     * @param userId from bridge StudyParticipant
      * @param user HappyMedium user
      * @throws IOException if something goes wrong deleting user report data and attributes
      */
-    private static void clearMigrationData(
-            StudyParticipant participant, HmDataModel.HmUser user) throws IOException {
-        String userId = participant.getId();
+    @VisibleForTesting
+    protected static void clearMigrationData(
+            String userId, HmDataModel.HmUser user) throws IOException {
         System.out.println("Clearing migration data for user " + user.externalId);
 
         // Delete all user study reports
@@ -186,15 +167,19 @@ public class BridgeJavaSdkUtil {
         reportsApi.deleteAllParticipantReportRecords(userId, TEST_SCHEDULE_REPORT_ID).execute();
         reportsApi.deleteAllParticipantReportRecords(userId, AVAILABILITY_REPORT_ID).execute();
 
+        StudyParticipant newParticipant = new StudyParticipant()
+                .attributes(migratedUserAttributes(user));
+
+        participantsApi.updateParticipant(userId, newParticipant).execute();
+    }
+
+    @VisibleForTesting
+    protected static Map<String, String> migratedUserAttributes(HmDataModel.HmUser user) {
         // Set the new attributes to be blank, except for IS_MIGRATED = true, and ARC_ID
         Map<String, String> attributes = new HashMap<>();
         attributes.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_TRUE);
         attributes.put(ATTRIBUTE_ARC_ID, user.arcId);
-
-        StudyParticipant newParticipant = new StudyParticipant()
-                .attributes(attributes);
-
-        participantsApi.updateParticipant(userId, newParticipant).execute();
+        return attributes;
     }
 
     /**
@@ -203,7 +188,8 @@ public class BridgeJavaSdkUtil {
      * @param data that will be uploaded as user reports
      * @throws IOException if something goes wrong writing the reports to Bridge.
      */
-    private static void writeUserReports(String userId, HmDataModel.HmUserData data) throws IOException {
+    @VisibleForTesting
+    protected static void writeUserReports(String userId, HmDataModel.HmUserData data) throws IOException {
         if (data == null) {
             return; // no data to write
         }
@@ -296,7 +282,8 @@ public class BridgeJavaSdkUtil {
      * @param clientData to attach to the report
      * @return a report that can be uploaded to bridge.
      */
-    private static ReportData makeReportData(String clientData) {
+    @VisibleForTesting
+    protected static ReportData makeReportData(String clientData) {
         ReportData reportData = new ReportData();
         reportData.setLocalDate(REPORT_DATE);
         reportData.setData(clientData);

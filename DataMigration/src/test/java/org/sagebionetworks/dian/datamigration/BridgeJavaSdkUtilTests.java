@@ -32,25 +32,270 @@
 
 package org.sagebionetworks.dian.datamigration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 
 import org.apache.commons.lang3.StringUtils;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
+import org.sagebionetworks.bridge.rest.api.ParticipantReportsApi;
+import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
+import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
+import org.sagebionetworks.bridge.rest.model.Message;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+
+import retrofit2.Call;
+import retrofit2.Response;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.sagebionetworks.dian.datamigration.BridgeJavaSdkUtil.*;
 
-public class BridgeJavaSdkUtilTests {
+public class BridgeJavaSdkUtilTests extends Mockito {
+
+    private final Path resourceDirectory = Paths.get("src", "test", "resources");
+    private final Path testSessionSchedulePath = resourceDirectory
+            .resolve("testSessionSchedules")
+            .resolve("test_session_schedules_2021-07-08")
+            .resolve("000000 test_session_schedule 2019-08-29T16-06-11Z.json");
+    private final Path wakeSleepSchedulePath = resourceDirectory
+            .resolve("wakeSleepSchedules")
+            .resolve("wake_sleep_schedules_08-07-21")
+            .resolve("000000 Availability 2019-08-29T16-06-11Z.json");
+
+    @Mock
+    private ForResearchersApi mockResearcherApi;
+
+    @Mock
+    private ParticipantReportsApi mockReportsApi;
+
+    @Mock
+    private ParticipantsApi mockParticipantsApi;
+
+    @Mock
+    private Call<Message> mockTestSessionReportCall;
+
+    @Mock
+    private Call<Message> mockWakeSleepReportCall;
+
+    @Mock
+    private Call<Message> mockCompletedTestsReportCall;
+
+    @Mock
+    private Call<Message> mockDeleteTestSessionReportCall;
+
+    @Mock
+    private Call<Message> mockDeleteWakeSleepReportCall;
+
+    @Mock
+    private Call<Message> mockDeleteCompletedTestReportCall;
+
+    @Mock
+    private Call<Message> mockUpdateParticipantCall;
+
+    @Mock
+    private Call<IdentifierHolder> mockSignUpCall;
+
+    @Mock
+    private Call<StudyParticipant> mockGetExternalIdMigratedCall;
+
+    @Mock
+    private Call<StudyParticipant> mockGetExternalIdNotMigratedCall;
+
+    @Before
+    public void before() throws IOException {
+        if (mockResearcherApi == null) {  // Only initialize once
+            MockitoAnnotations.initMocks(this);
+
+            BridgeJavaSdkUtil.mockInitialize(mockResearcherApi, mockReportsApi, mockParticipantsApi);
+            
+            when(mockTestSessionReportCall.execute())
+                    .thenReturn(Response.success(new Message()));
+            when(mockReportsApi.addParticipantReportRecordV4(
+                    anyString(), eq(TEST_SCHEDULE_REPORT_ID), any()))
+                    .thenReturn(mockTestSessionReportCall);
+
+            when(mockWakeSleepReportCall.execute())
+                    .thenReturn(Response.success(new Message()));
+            when(mockReportsApi.addParticipantReportRecordV4(
+                    anyString(), eq(AVAILABILITY_REPORT_ID), any()))
+                    .thenReturn(mockWakeSleepReportCall);
+
+            when(mockCompletedTestsReportCall.execute())
+                    .thenReturn(Response.success(new Message()));
+            when(mockReportsApi.addParticipantReportRecordV4(
+                    anyString(), eq(COMPLETED_TESTS_REPORT_ID), any()))
+                    .thenReturn(mockCompletedTestsReportCall);
+
+            when(mockDeleteTestSessionReportCall.execute())
+                    .thenReturn(Response.success(new Message()));
+            when(mockReportsApi.deleteAllParticipantReportRecords(anyString(), eq(TEST_SCHEDULE_REPORT_ID)))
+                    .thenReturn(mockDeleteTestSessionReportCall);
+
+            when(mockDeleteWakeSleepReportCall.execute())
+                    .thenReturn(Response.success(new Message()));
+            when(mockReportsApi.deleteAllParticipantReportRecords(anyString(), eq(AVAILABILITY_REPORT_ID)))
+                    .thenReturn(mockDeleteWakeSleepReportCall);
+
+            when(mockDeleteCompletedTestReportCall.execute())
+                    .thenReturn(Response.success(new Message()));
+            when(mockReportsApi.deleteAllParticipantReportRecords(anyString(), eq(COMPLETED_TESTS_REPORT_ID)))
+                    .thenReturn(mockDeleteCompletedTestReportCall);
+
+            when(mockUpdateParticipantCall.execute())
+                    .thenReturn(Response.success(new Message()));
+            when(mockParticipantsApi.updateParticipant(anyString(), any()))
+                    .thenReturn(mockUpdateParticipantCall);
+
+            ObjectMapper mapper = new ObjectMapper();
+            // Work-around for BridgeJavaSdk not exposing IdentifierHolder constructor
+            IdentifierHolder identifierHolder = mapper
+                    .readValue("{\"identifier\":\"abc123\"}", IdentifierHolder.class);
+            when(mockSignUpCall.execute())
+                    .thenReturn(Response.success(identifierHolder));
+            when(mockResearcherApi.createParticipant(any()))
+                    .thenReturn(mockSignUpCall);
+
+            when(mockResearcherApi.getParticipantByExternalId(eq("999999"), eq(false)))
+                    .thenThrow(new EntityNotFoundException("Account not found", ""));
+
+            // Work-around for BridgeJavaSdk not exposing user ID
+            StudyParticipant migratedParticipant = mapper
+                    .readValue("{\"id\":\"abc123\"}", StudyParticipant.class);
+            Map<String, String> migratedAttributes = new HashMap<>();
+            migratedAttributes.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_TRUE);
+            migratedParticipant.setAttributes(migratedAttributes);
+            when(mockGetExternalIdMigratedCall.execute())
+                    .thenReturn(Response.success(migratedParticipant));
+            when(mockResearcherApi.getParticipantByExternalId(eq("d1a5cbaf-288c-48dd-9d4a-98c90213ac01"), eq(false)))
+                    .thenReturn(mockGetExternalIdMigratedCall);
+
+            // Work-around for BridgeJavaSdk not exposing user ID
+            StudyParticipant notMigratedParticipant = mapper
+                    .readValue("{\"id\":\"abc123\"}", StudyParticipant.class);
+            Map<String, String> notMigratedAttributes = new HashMap<>();
+            notMigratedAttributes.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_FALSE);
+            notMigratedParticipant.setAttributes(migratedAttributes);
+            when(mockGetExternalIdNotMigratedCall.execute())
+                    .thenReturn(Response.success(notMigratedParticipant));
+            when(mockResearcherApi.getParticipantByExternalId(eq("999997"), eq(false)))
+                    .thenReturn(mockGetExternalIdNotMigratedCall);
+        }
+    }
+
+    @Test
+    public void test_MigrateUser_AccountNotCreatedYet() throws IOException {
+        HmDataModel.HmUser user = createNewUser();
+        user.externalId = "999999";
+        user.arcId = "999999";
+        HmDataModel.HmUserData data = createFullNewUserData(user.arcId);
+
+        BridgeJavaSdkUtil.migrateUser(user, data);
+        verify(mockSignUpCall).execute();
+        verify(mockTestSessionReportCall).execute();
+        verify(mockWakeSleepReportCall).execute();
+        verify(mockCompletedTestsReportCall).execute();
+    }
+
+    @Test
+    public void test_MigrateUser_AccountMigrated() throws IOException {
+        HmDataModel.HmUser user = createNewUser();
+        user.externalId = "d1a5cbaf-288c-48dd-9d4a-98c90213ac01";
+        user.arcId = "999999";
+        user.deviceId = "d1a5cbaf-288c-48dd-9d4a-98c90213ac01";
+        HmDataModel.HmUserData data = createFullNewUserData(user.arcId);
+
+        BridgeJavaSdkUtil.migrateUser(user, data);
+        verify(mockSignUpCall, times(0)).execute();
+        verify(mockTestSessionReportCall, times(0)).execute();
+        verify(mockWakeSleepReportCall, times(0)).execute();
+        verify(mockCompletedTestsReportCall, times(0)).execute();
+        verify(mockDeleteTestSessionReportCall).execute();
+        verify(mockDeleteWakeSleepReportCall).execute();
+        verify(mockDeleteCompletedTestReportCall).execute();
+        verify(mockUpdateParticipantCall).execute();
+    }
+
+    @Test
+    public void test_MigrateUser_AccountNotMigrated() throws IOException {
+        HmDataModel.HmUser user = createNewUser();
+        user.externalId = "999997";
+        user.arcId = "999997";
+        HmDataModel.HmUserData data = createFullNewUserData(user.arcId);
+
+        BridgeJavaSdkUtil.migrateUser(user, data);
+        verify(mockSignUpCall, times(0)).execute();
+        verify(mockTestSessionReportCall).execute();
+        verify(mockWakeSleepReportCall).execute();
+        verify(mockCompletedTestsReportCall).execute();
+    }
+
+    @Test
+    public void test_clearMigrationData() throws IOException {
+        HmDataModel.HmUser user = createNewUser();
+        String userId = "abc123";
+        BridgeJavaSdkUtil.clearMigrationData(userId, user);
+        verify(mockDeleteTestSessionReportCall).execute();
+        verify(mockDeleteWakeSleepReportCall).execute();
+        verify(mockDeleteCompletedTestReportCall).execute();
+        verify(mockUpdateParticipantCall).execute();
+    }
+
+    @Test
+    public void test_writeUserReports() throws IOException {
+        HmDataModel.HmUserData data = null;
+
+        // No calls to bridge sdk, but it should not throw an exception
+        BridgeJavaSdkUtil.writeUserReports("000001", data);
+
+        data = new HmDataModel.HmUserData();
+        data.testSessionSchedule = testSessionSchedulePath;
+
+        BridgeJavaSdkUtil.writeUserReports("000001", data);
+        verify(mockTestSessionReportCall).execute();
+    }
+
+    @Test
+    public void test_writeUserReports2() throws IOException {
+        HmDataModel.HmUserData data = new HmDataModel.HmUserData();
+
+        data.testSessionSchedule = testSessionSchedulePath;
+        data.wakeSleepSchedule = wakeSleepSchedulePath;
+
+        BridgeJavaSdkUtil.writeUserReports("000001", data);
+        verify(mockTestSessionReportCall).execute();
+        verify(mockWakeSleepReportCall).execute();
+    }
+
+    @Test
+    public void test_writeUserReports3() throws IOException {
+        HmDataModel.HmUserData data = new HmDataModel.HmUserData();;
+
+        data.testSessionSchedule = testSessionSchedulePath;
+        data.wakeSleepSchedule = wakeSleepSchedulePath;
+        data.completedTests = new HmDataModel.CompletedTestList();
+
+        BridgeJavaSdkUtil.writeUserReports("000001", data);
+        verify(mockTestSessionReportCall).execute();
+        verify(mockWakeSleepReportCall).execute();
+        verify(mockCompletedTestsReportCall).execute();
+    }
 
     @Test
     public void test_bridgifyAttributes() throws IOException {
@@ -104,6 +349,16 @@ public class BridgeJavaSdkUtilTests {
     }
 
     @Test
+    public void test_migratedUserAttributes() {
+        HmDataModel.HmUser user = createExistingUser();
+        Map<String, String> attributes = BridgeJavaSdkUtil.migratedUserAttributes(user);
+        assertNotNull(attributes);
+        assertEquals(2, attributes.keySet().size());
+        assertEquals("true", attributes.get("IS_MIGRATED"));
+        assertEquals("000000", attributes.get("ARC_ID"));
+    }
+
+    @Test
     public void test_isParticipantMigrated() {
         StudyParticipant participant = new StudyParticipant();
         HmDataModel.HmUser user = new HmDataModel.HmUser();
@@ -130,6 +385,44 @@ public class BridgeJavaSdkUtilTests {
 
     @Test
     public void test_signUpObject_ArcId() {
+        HmDataModel.HmUser user = createNewUser();
+        SignUp signUp = BridgeJavaSdkUtil.createSignUpObject(user);
+        assertNotNull(signUp);
+        assertEquals(1, signUp.getExternalIds().keySet().size());
+        assertEquals("000000", signUp.getExternalIds().get("DIAN"));
+        assertEquals(SharingScope.ALL_QUALIFIED_RESEARCHERS, signUp.getSharingScope());
+        assertEquals(0, signUp.getDataGroups().size());
+        assertEquals("5tm95s?ES?qTx5iGeLmb", signUp.getPassword());
+        assertNotNull(signUp.getAttributes());
+    }
+
+    @Test
+    public void test_signUpObject_DeviceId() {
+        HmDataModel.HmUser user = createExistingUser();
+        SignUp signUp = BridgeJavaSdkUtil.createSignUpObject(user);
+        assertNotNull(signUp);
+        assertEquals(1, signUp.getExternalIds().keySet().size());
+        assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", signUp.getExternalIds().get("DIAN"));
+        assertEquals(SharingScope.NO_SHARING, signUp.getSharingScope());
+        assertEquals(1, signUp.getDataGroups().size());
+        assertEquals("test_user", signUp.getDataGroups().get(0));
+        assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", signUp.getPassword());
+        assertNotNull(signUp.getAttributes());
+    }
+
+    private HmDataModel.HmUser createExistingUser() {
+        HmDataModel.HmUser user = new HmDataModel.HmUser();
+        String arcId = "000000";
+        String deviceId = "d1a5cbaf-288c-48dd-9d4a-98c90213ac01";
+        user.externalId = deviceId;
+        user.arcId = arcId;
+        user.deviceId = deviceId;
+        user.studyId = "DIAN";
+        user.password = deviceId;
+        return user;
+    }
+
+    private HmDataModel.HmUser createNewUser() {
         HmDataModel.HmUser user = new HmDataModel.HmUser();
         String arcId = "000000";
         String deviceId = "d1a5cbaf-288c-48dd-9d4a-98c90213ac01";
@@ -139,37 +432,24 @@ public class BridgeJavaSdkUtilTests {
         user.studyId = "DIAN";
         user.deviceId = deviceId;
         user.password = password;
-
-        SignUp signUp = BridgeJavaSdkUtil.createSignUpObject(user);
-        assertNotNull(signUp);
-        assertEquals(1, signUp.getExternalIds().keySet().size());
-        assertEquals(arcId, signUp.getExternalIds().get("DIAN"));
-        assertEquals(SharingScope.ALL_QUALIFIED_RESEARCHERS, signUp.getSharingScope());
-        assertEquals(0, signUp.getDataGroups().size());
-        assertEquals(password, signUp.getPassword());
-        assertNotNull(signUp.getAttributes());
+        return user;
     }
 
-    @Test
-    public void test_signUpObject_DeviceId() {
-        HmDataModel.HmUser user = new HmDataModel.HmUser();
-        String arcId = "000000";
-        String deviceId = "d1a5cbaf-288c-48dd-9d4a-98c90213ac01";
-        String password = "5tm95s?ES?qTx5iGeLmb";
-        user.externalId = deviceId;
-        user.arcId = arcId;
-        user.deviceId = deviceId;
-        user.studyId = "DIAN";
-        user.password = password;
+    private HmDataModel.HmUserData createNewUserData(String arcId) {
+        HmDataModel.HmUserData data = new HmDataModel.HmUserData();
+        data.completedTests = null;
+        data.testSessionSchedule = null;
+        data.wakeSleepSchedule = null;
+        data.arcId = arcId;
+        return data;
+    }
 
-        SignUp signUp = BridgeJavaSdkUtil.createSignUpObject(user);
-        assertNotNull(signUp);
-        assertEquals(1, signUp.getExternalIds().keySet().size());
-        assertEquals(deviceId, signUp.getExternalIds().get("DIAN"));
-        assertEquals(SharingScope.NO_SHARING, signUp.getSharingScope());
-        assertEquals(1, signUp.getDataGroups().size());
-        assertEquals("test_user", signUp.getDataGroups().get(0));
-        assertEquals(password, signUp.getPassword());
-        assertNotNull(signUp.getAttributes());
+    private HmDataModel.HmUserData createFullNewUserData(String arcId) {
+        HmDataModel.HmUserData data = new HmDataModel.HmUserData();
+        data.testSessionSchedule = testSessionSchedulePath;
+        data.wakeSleepSchedule = wakeSleepSchedulePath;
+        data.completedTests = new HmDataModel.CompletedTestList();
+        data.arcId = arcId;
+        return data;
     }
 }
