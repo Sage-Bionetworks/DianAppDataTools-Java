@@ -1,0 +1,52 @@
+[{
+    "id": "1",
+    "participant_id": "000001",
+    "name": "EXR_Test1",
+    "study_id": "1"
+},
+{
+    "id": "2",
+    "participant_id": "000002",
+    "name": "EXR_Test2",
+    "study_id": "1"
+},
+{
+    "id": "3",
+    "participant_id": "555555",
+    "name": "HASD_Test1",
+    "study_id": "2"
+},
+{
+    "id": "4",
+    "participant_id": "200007",
+    "name": "HASD_Test2",
+    "study_id": "2"
+},
+{
+    "id": "5",
+    "participant_id": "626017",
+    "name": "OBS_Test1",
+    "study_id": "3"
+},
+{
+    "id": "6",
+    "participant_id": "999999",
+    "name": "NoRaterYet",
+    "study_id": "2"
+},
+{
+    "id": "7",
+    "participant_id": "888888",
+    "study_id": "2"
+},
+{
+    "id": "8",
+    "participant_id": "777777",
+    "study_id": "2"
+},
+{
+    "id": "9",
+    "participant_id": "1",
+    "study_id": "2"
+}
+]

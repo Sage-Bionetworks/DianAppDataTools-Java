@@ -1,0 +1,29 @@
+name: Unit Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - release
+  push:
+    branches:
+      - main
+      - release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+                  
+      - name: Unit Test
+        run: ./gradlew test
+
+      - name: Upload Test Reports Folder
+        uses: actions/upload-artifact@v2
+        if: ${{ always() }} # IMPORTANT: Upload reports regardless of status
+        with:
+          name: UnitTestResults
+          path: DataMigration/build/test-results/test/*.xml # path to where the xml test results are stored
+          

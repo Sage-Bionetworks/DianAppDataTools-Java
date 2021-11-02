@@ -1,0 +1,42 @@
+[
+    {
+        "id": "1",
+        "participant": "1",
+        "site_location": "1"
+    },
+    {
+        "id": "2",
+        "participant": "2",
+        "site_location": "1"
+    },
+    {
+        "id": "3",
+        "participant": "3",
+        "site_location": "2"
+    },
+    {
+        "id": "4",
+        "participant": "4",
+        "site_location": "2"
+    },
+    {
+        "id": "5",
+        "participant": "5",
+        "site_location": "3"
+    },
+    {
+        "id": "6",
+        "participant": "6",
+        "site_location": "3"
+    },
+    {
+        "id": "7",
+        "participant": "8",
+        "site_location": "3"
+    },
+    {
+        "id": "8",
+        "participant": "9",
+        "site_location": "3"
+    }
+]

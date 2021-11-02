@@ -1,0 +1,29 @@
+[
+    {
+        "id": "1",
+        "name": "1-WashU",
+        "description": "1-WashU",
+        "created_at": "1616618432",
+        "updated_at": "1616618432",
+        "contact_phone": "+13333333333",
+        "contact_email": "a@b.edu"
+    },
+    {
+        "id": "2",
+        "name": "2-SDP",
+        "description": "2-SDP",
+        "created_at": "1616618432",
+        "updated_at": "1616618432",
+        "contact_phone": "+14444444444",
+        "contact_email": "c@d.com"
+    },
+    {
+        "id": "3",
+        "name": "3-Sage",
+        "description": "3-Sage",
+        "created_at": "1616618432",
+        "updated_at": "1616618432",
+        "contact_phone": "+15555555555",
+        "contact_email": "e.f@g.org"
+    }
+]

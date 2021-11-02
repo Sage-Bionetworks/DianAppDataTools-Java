@@ -1,0 +1,14 @@
+[
+    {
+        "id": "1",
+        "participant_id": "1",
+        "phone": "+11111111111",
+        "name": "EXR_Test1"
+    },
+    {
+        "id": "2",
+        "participant_id": "2",
+        "phone": "+12222222222",
+        "name": "EXR_Test2"
+    }
+]
