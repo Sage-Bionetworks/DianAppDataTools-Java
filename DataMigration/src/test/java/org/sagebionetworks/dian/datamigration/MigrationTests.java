@@ -33,6 +33,7 @@
 package org.sagebionetworks.dian.datamigration;
 
 import org.junit.Test;
+import org.junit.function.ThrowingRunnable;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -45,6 +46,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.sagebionetworks.dian.datamigration.MigrationUtil.*;
 import static org.sagebionetworks.dian.datamigration.HmDataModel.*;
@@ -161,18 +163,12 @@ public class MigrationTests {
 
         // Test that the app throws a null pointer exception with a null path in the list
         participantPathList.add(null);
-        boolean nullExceptionCaught = false;
-        List<HmUser> users;
-        try {
-            users = MigrationUtil.createHmUserRaterData(participantPathList);
-        } catch (NullPointerException e) {
-            nullExceptionCaught = true;
-        }
-        assertTrue(nullExceptionCaught);
+        assertThrows(NullPointerException.class, () ->
+                MigrationUtil.createHmUserRaterData(participantPathList));
 
         participantPathList.clear();
         participantPathList.add(participantsFolder);
-        users = MigrationUtil.createHmUserRaterData(participantPathList);
+        List<HmUser> users = MigrationUtil.createHmUserRaterData(participantPathList);
 
         assertNotNull(users);
         assertEquals(9, users.size());

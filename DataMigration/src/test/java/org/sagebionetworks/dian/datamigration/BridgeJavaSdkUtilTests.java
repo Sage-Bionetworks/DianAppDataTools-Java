@@ -120,83 +120,81 @@ public class BridgeJavaSdkUtilTests extends Mockito {
 
     @Before
     public void before() throws IOException {
-        if (mockResearcherApi == null) {  // Only initialize once
-            MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.initMocks(this);
 
-            BridgeJavaSdkUtil.mockInitialize(mockResearcherApi, mockReportsApi, mockParticipantsApi);
-            
-            when(mockTestSessionReportCall.execute())
-                    .thenReturn(Response.success(new Message()));
-            when(mockReportsApi.addParticipantReportRecordV4(
-                    anyString(), eq(TEST_SCHEDULE_REPORT_ID), any()))
-                    .thenReturn(mockTestSessionReportCall);
+        BridgeJavaSdkUtil.mockInitialize(mockResearcherApi, mockReportsApi, mockParticipantsApi);
 
-            when(mockWakeSleepReportCall.execute())
-                    .thenReturn(Response.success(new Message()));
-            when(mockReportsApi.addParticipantReportRecordV4(
-                    anyString(), eq(AVAILABILITY_REPORT_ID), any()))
-                    .thenReturn(mockWakeSleepReportCall);
+        when(mockTestSessionReportCall.execute())
+                .thenReturn(Response.success(new Message()));
+        when(mockReportsApi.addParticipantReportRecordV4(
+                anyString(), eq(TEST_SCHEDULE_REPORT_ID), any()))
+                .thenReturn(mockTestSessionReportCall);
 
-            when(mockCompletedTestsReportCall.execute())
-                    .thenReturn(Response.success(new Message()));
-            when(mockReportsApi.addParticipantReportRecordV4(
-                    anyString(), eq(COMPLETED_TESTS_REPORT_ID), any()))
-                    .thenReturn(mockCompletedTestsReportCall);
+        when(mockWakeSleepReportCall.execute())
+                .thenReturn(Response.success(new Message()));
+        when(mockReportsApi.addParticipantReportRecordV4(
+                anyString(), eq(AVAILABILITY_REPORT_ID), any()))
+                .thenReturn(mockWakeSleepReportCall);
 
-            when(mockDeleteTestSessionReportCall.execute())
-                    .thenReturn(Response.success(new Message()));
-            when(mockReportsApi.deleteAllParticipantReportRecords(anyString(), eq(TEST_SCHEDULE_REPORT_ID)))
-                    .thenReturn(mockDeleteTestSessionReportCall);
+        when(mockCompletedTestsReportCall.execute())
+                .thenReturn(Response.success(new Message()));
+        when(mockReportsApi.addParticipantReportRecordV4(
+                anyString(), eq(COMPLETED_TESTS_REPORT_ID), any()))
+                .thenReturn(mockCompletedTestsReportCall);
 
-            when(mockDeleteWakeSleepReportCall.execute())
-                    .thenReturn(Response.success(new Message()));
-            when(mockReportsApi.deleteAllParticipantReportRecords(anyString(), eq(AVAILABILITY_REPORT_ID)))
-                    .thenReturn(mockDeleteWakeSleepReportCall);
+        when(mockDeleteTestSessionReportCall.execute())
+                .thenReturn(Response.success(new Message()));
+        when(mockReportsApi.deleteAllParticipantReportRecords(anyString(), eq(TEST_SCHEDULE_REPORT_ID)))
+                .thenReturn(mockDeleteTestSessionReportCall);
 
-            when(mockDeleteCompletedTestReportCall.execute())
-                    .thenReturn(Response.success(new Message()));
-            when(mockReportsApi.deleteAllParticipantReportRecords(anyString(), eq(COMPLETED_TESTS_REPORT_ID)))
-                    .thenReturn(mockDeleteCompletedTestReportCall);
+        when(mockDeleteWakeSleepReportCall.execute())
+                .thenReturn(Response.success(new Message()));
+        when(mockReportsApi.deleteAllParticipantReportRecords(anyString(), eq(AVAILABILITY_REPORT_ID)))
+                .thenReturn(mockDeleteWakeSleepReportCall);
 
-            when(mockUpdateParticipantCall.execute())
-                    .thenReturn(Response.success(new Message()));
-            when(mockParticipantsApi.updateParticipant(anyString(), any()))
-                    .thenReturn(mockUpdateParticipantCall);
+        when(mockDeleteCompletedTestReportCall.execute())
+                .thenReturn(Response.success(new Message()));
+        when(mockReportsApi.deleteAllParticipantReportRecords(anyString(), eq(COMPLETED_TESTS_REPORT_ID)))
+                .thenReturn(mockDeleteCompletedTestReportCall);
 
-            ObjectMapper mapper = new ObjectMapper();
-            // Work-around for BridgeJavaSdk not exposing IdentifierHolder constructor
-            IdentifierHolder identifierHolder = mapper
-                    .readValue("{\"identifier\":\"abc123\"}", IdentifierHolder.class);
-            when(mockSignUpCall.execute())
-                    .thenReturn(Response.success(identifierHolder));
-            when(mockResearcherApi.createParticipant(any()))
-                    .thenReturn(mockSignUpCall);
+        when(mockUpdateParticipantCall.execute())
+                .thenReturn(Response.success(new Message()));
+        when(mockParticipantsApi.updateParticipant(anyString(), any()))
+                .thenReturn(mockUpdateParticipantCall);
 
-            when(mockResearcherApi.getParticipantByExternalId(eq("999999"), eq(false)))
-                    .thenThrow(new EntityNotFoundException("Account not found", ""));
+        ObjectMapper mapper = new ObjectMapper();
+        // Work-around for BridgeJavaSdk not exposing IdentifierHolder constructor
+        IdentifierHolder identifierHolder = mapper
+                .readValue("{\"identifier\":\"abc123\"}", IdentifierHolder.class);
+        when(mockSignUpCall.execute())
+                .thenReturn(Response.success(identifierHolder));
+        when(mockResearcherApi.createParticipant(any()))
+                .thenReturn(mockSignUpCall);
 
-            // Work-around for BridgeJavaSdk not exposing user ID
-            StudyParticipant migratedParticipant = mapper
-                    .readValue("{\"id\":\"abc123\"}", StudyParticipant.class);
-            Map<String, String> migratedAttributes = new HashMap<>();
-            migratedAttributes.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_TRUE);
-            migratedParticipant.setAttributes(migratedAttributes);
-            when(mockGetExternalIdMigratedCall.execute())
-                    .thenReturn(Response.success(migratedParticipant));
-            when(mockResearcherApi.getParticipantByExternalId(eq("d1a5cbaf-288c-48dd-9d4a-98c90213ac01"), eq(false)))
-                    .thenReturn(mockGetExternalIdMigratedCall);
+        when(mockResearcherApi.getParticipantByExternalId(eq("999999"), eq(false)))
+                .thenThrow(new EntityNotFoundException("Account not found", ""));
 
-            // Work-around for BridgeJavaSdk not exposing user ID
-            StudyParticipant notMigratedParticipant = mapper
-                    .readValue("{\"id\":\"abc123\"}", StudyParticipant.class);
-            Map<String, String> notMigratedAttributes = new HashMap<>();
-            notMigratedAttributes.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_FALSE);
-            notMigratedParticipant.setAttributes(migratedAttributes);
-            when(mockGetExternalIdNotMigratedCall.execute())
-                    .thenReturn(Response.success(notMigratedParticipant));
-            when(mockResearcherApi.getParticipantByExternalId(eq("999997"), eq(false)))
-                    .thenReturn(mockGetExternalIdNotMigratedCall);
-        }
+        // Work-around for BridgeJavaSdk not exposing user ID
+        StudyParticipant migratedParticipant = mapper
+                .readValue("{\"id\":\"abc123\"}", StudyParticipant.class);
+        Map<String, String> migratedAttributes = new HashMap<>();
+        migratedAttributes.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_TRUE);
+        migratedParticipant.setAttributes(migratedAttributes);
+        when(mockGetExternalIdMigratedCall.execute())
+                .thenReturn(Response.success(migratedParticipant));
+        when(mockResearcherApi.getParticipantByExternalId(eq("d1a5cbaf-288c-48dd-9d4a-98c90213ac01"), eq(false)))
+                .thenReturn(mockGetExternalIdMigratedCall);
+
+        // Work-around for BridgeJavaSdk not exposing user ID
+        StudyParticipant notMigratedParticipant = mapper
+                .readValue("{\"id\":\"abc123\"}", StudyParticipant.class);
+        Map<String, String> notMigratedAttributes = new HashMap<>();
+        notMigratedAttributes.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_FALSE);
+        notMigratedParticipant.setAttributes(migratedAttributes);
+        when(mockGetExternalIdNotMigratedCall.execute())
+                .thenReturn(Response.success(notMigratedParticipant));
+        when(mockResearcherApi.getParticipantByExternalId(eq("999997"), eq(false)))
+                .thenReturn(mockGetExternalIdNotMigratedCall);
     }
 
     @Test

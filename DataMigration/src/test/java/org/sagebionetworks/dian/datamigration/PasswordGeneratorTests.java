@@ -30,10 +30,10 @@ public class PasswordGeneratorTests {
 
         for (int i = 0; i < password.length(); i++) {
             String character = Character.toString(password.charAt(i));
-            containsUppercase |= PasswordGenerator.UPPERCASE.contains(character);
-            containsLowercase |= PasswordGenerator.LOWERCASE.contains(character);
-            containsNumeric |= PasswordGenerator.NUMERIC.contains(character);
-            containsSpecial |= PasswordGenerator.SYMBOLIC.contains(character);
+            containsUppercase = containsUppercase || PasswordGenerator.UPPERCASE.contains(character);
+            containsLowercase = containsLowercase || PasswordGenerator.LOWERCASE.contains(character);
+            containsNumeric = containsNumeric || PasswordGenerator.NUMERIC.contains(character);
+            containsSpecial = containsSpecial || PasswordGenerator.SYMBOLIC.contains(character);
         }
 
         return containsUppercase && containsLowercase && containsNumeric && containsSpecial;
