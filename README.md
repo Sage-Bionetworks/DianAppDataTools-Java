@@ -36,6 +36,13 @@ ghcr.io/sage-bionetworks/diandatamigration:release-test1
 
 The github action **docker_release.yml** handles creating and deploying the docker image to Sage's github packages only on a push to a release/* branch.
 
+To run the docker image in the example above, you need to run the following commands:
+```
+docker login ghcr.io -u $your_git_username -p $your_git_personal_access_token
+docker pull ghcr.io/sage-bionetworks/diandatamigration:release-test1
+docker run -e BR_ID=$BR_ID -e BR_EMAIL=$BR_EMAIL -e BR_PW=$BR_PW -e SYN_PROJ_ID=$SYN_PROJ_ID -e SYN_PAT=$SYN_PAT ghcr.io/sage-bionetworks/diandatamigration:release-test1
+```
+
 # User Migration Background Info:
 To fully understand the migration process, there are a few terms that need described.
 
