@@ -288,12 +288,11 @@ public class MigrationUtil {
     public static @NonNull List<HmUser> createHmUserRaterData(
             List<Path> participantJsonFolder) throws IOException {
 
-        List<HmUser> data = new ArrayList<>();
+        List<HmUser> userList = new ArrayList<>();
         ObjectMapper mapper = new ObjectMapper();
 
         for (Path folder : participantJsonFolder) {
 
-            List<HmUser> userList = new ArrayList<>();
             Map<ParticipantFileEnum, Path> pathList = MigrationUtil.findParticipantPaths(folder);
 
             Participant[] participantList = TableRow.parseTableRow(mapper, pathList.get(
@@ -315,7 +314,6 @@ public class MigrationUtil {
 
             for (Participant user : participantList) {
                 SiteLocation site = TableRow.findSiteLocation(user.id, participantSiteLocList, siteLocList);
-                Participant participant = TableRow.findParticipant(user.id, participantList);
                 Rater rater = TableRow.findParticipantRater(user.id, participantRater, raters);
                 ParticipantDeviceId deviceId = TableRow.findParticipantDeviceId(user.id, participantDeviceIds);
                 ParticipantNotes note = TableRow.findParticipantNotes(user.id, participantNotes);
@@ -326,17 +324,46 @@ public class MigrationUtil {
                     phone = TableRow.findParticipantPhone(user.id, phoneList);
                 }
 
-                HmUser userMatch = new HmUser(participant, rater, site, note, phone, deviceId);
-                userList.add(userMatch);
+                HmUser userMatch = new HmUser(user, rater, site, note, phone, deviceId);
+                addUniqueUserAndResolveConflicts(userMatch, userList);
             }
-
-            data.addAll(userList);
         }
 
         // Sort by Arc ID
-        data.sort((u1, u2) -> u1.arcId.compareTo(u2.arcId));
+        userList.sort((u1, u2) -> u1.arcId.compareTo(u2.arcId));
 
-        return data;
+        return userList;
+    }
+
+    /**
+     * HappyMedium's participant data contains duplicate entries for participant Arc IDs
+     * If there is an existing entry in the user list already, let's take the one
+     * that has the most recent Device ID, or has a non-null Device ID
+     * @param userMatch the user to add to the list of unique users
+     * @param userList containing the list of unique users, this list will get edited
+     */
+    protected static void addUniqueUserAndResolveConflicts(HmUser userMatch, List<HmUser> userList) {
+        HmUser duplicateUserToRemove = null;
+        HmUser userToAdd = userMatch;
+        for (HmUser possibleDuplicate: userList) {
+            if (possibleDuplicate.arcId.equals(userMatch.arcId)) {
+                if (userMatch.deviceIdCreatedAt == HmDataModel.NO_DEVICE_ID_CREATED_ON) {
+                    userToAdd = null;
+                } else if (possibleDuplicate.deviceIdCreatedAt == HmDataModel.NO_DEVICE_ID_CREATED_ON) {
+                    duplicateUserToRemove = possibleDuplicate;
+                } else if (possibleDuplicate.deviceIdCreatedAt >= userMatch.deviceIdCreatedAt) {
+                    userToAdd = null;
+                } else if (userMatch.deviceIdCreatedAt >= possibleDuplicate.deviceIdCreatedAt) {
+                    duplicateUserToRemove = possibleDuplicate;
+                }
+            }
+        }
+        if (duplicateUserToRemove != null) {
+            userList.remove(duplicateUserToRemove);
+        }
+        if (userToAdd != null) {
+            userList.add(userToAdd);
+        }
     }
 
     /**

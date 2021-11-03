@@ -408,7 +408,7 @@ public class BridgeJavaSdkUtilTests extends Mockito {
         assertNotNull(signUp.getAttributes());
     }
 
-    private HmDataModel.HmUser createExistingUser() {
+    public static HmDataModel.HmUser createExistingUser() {
         HmDataModel.HmUser user = new HmDataModel.HmUser();
         String arcId = "000000";
         String deviceId = "d1a5cbaf-288c-48dd-9d4a-98c90213ac01";
@@ -420,7 +420,7 @@ public class BridgeJavaSdkUtilTests extends Mockito {
         return user;
     }
 
-    private HmDataModel.HmUser createNewUser() {
+    public static HmDataModel.HmUser createNewUser() {
         HmDataModel.HmUser user = new HmDataModel.HmUser();
         String arcId = "000000";
         String deviceId = "d1a5cbaf-288c-48dd-9d4a-98c90213ac01";
@@ -433,7 +433,7 @@ public class BridgeJavaSdkUtilTests extends Mockito {
         return user;
     }
 
-    private HmDataModel.HmUserData createNewUserData(String arcId) {
+    public static HmDataModel.HmUserData createNewUserData(String arcId) {
         HmDataModel.HmUserData data = new HmDataModel.HmUserData();
         data.completedTests = null;
         data.testSessionSchedule = null;

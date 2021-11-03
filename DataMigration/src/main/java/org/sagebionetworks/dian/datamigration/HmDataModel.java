@@ -51,6 +51,8 @@ import static org.sagebionetworks.dian.datamigration.MigrationUtil.NO_DEVICE_ID;
  */
 public class HmDataModel {
 
+    public static final long NO_DEVICE_ID_CREATED_ON = 0;
+
     /**
      * This class is used to compile the need to know data
      * about a Happy Medium user, all in one data class
@@ -72,6 +74,8 @@ public class HmDataModel {
         // This is only available to the user and HM's servers.
         // We use it as a one-time use activation code to transfer the user's data.
         public String deviceId;
+        // When the deviceId was created on HM's server.
+        public long deviceIdCreatedAt;
         // The site location managing the user.
         // For HASD, this is always Marisol at WashU.
         // For DIAN_OBS, this will be whichever university or organization running the sub-study
@@ -128,8 +132,13 @@ public class HmDataModel {
                 this.studyId = ERROR_STUDY_ID;
                 this.externalId = this.arcId;
                 this.password = PasswordGenerator.INSTANCE.nextPassword();
-                this.deviceId = participantDeviceId == null ?
-                        NO_DEVICE_ID : participantDeviceId.device_id;
+                if (participantDeviceId == null ) {
+                    this.deviceId = NO_DEVICE_ID;
+                    this.deviceIdCreatedAt = NO_DEVICE_ID_CREATED_ON;
+                } else {
+                    this.deviceId = participantDeviceId.device_id;
+                    this.deviceIdCreatedAt = Long.parseLong(participantDeviceId.created_at);
+                }
                 this.notes = errorNote;
                 return;
             }
@@ -145,6 +154,7 @@ public class HmDataModel {
             if (participantDeviceId == null) {
                 System.out.println("Unused user for site " + this.arcId);
                 this.deviceId = NO_DEVICE_ID;
+                this.deviceIdCreatedAt = NO_DEVICE_ID_CREATED_ON;
                 this.externalId = this.arcId;
                 this.password = PasswordGenerator.INSTANCE.nextPassword();
                 return;
@@ -157,6 +167,7 @@ public class HmDataModel {
             // device-id to download their data and create a new account on Bridge.
             System.out.println("Migrating user account as device-id " + this.arcId);
             this.deviceId = participantDeviceId.device_id;
+            this.deviceIdCreatedAt = Long.parseLong(participantDeviceId.created_at);
             this.externalId = this.deviceId;
             this.password = this.deviceId;
         }
@@ -399,12 +410,16 @@ public class HmDataModel {
             public String participant;
             // The participant's most recent device id
             public String device_id;
+            // A string representation of long value timestamp seconds since 1970
+            public String created_at;
 
             public ParticipantDeviceId() {}
-            public ParticipantDeviceId(String tableId, String participantTableId, String deviceId) {
+            public ParticipantDeviceId(String tableId, String participantTableId,
+                                       String deviceId, String createdAt) {
                 this.id = tableId;
                 this.participant = participantTableId;
                 this.device_id = deviceId;
+                this.created_at = createdAt;
             }
         }
 
