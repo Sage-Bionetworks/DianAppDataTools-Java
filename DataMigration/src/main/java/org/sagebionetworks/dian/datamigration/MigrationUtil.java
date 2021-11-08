@@ -343,26 +343,27 @@ public class MigrationUtil {
      * @param userList containing the list of unique users, this list will get edited
      */
     protected static void addUniqueUserAndResolveConflicts(HmUser userMatch, List<HmUser> userList) {
-        HmUser duplicateUserToRemove = null;
-        HmUser userToAdd = userMatch;
-        for (HmUser possibleDuplicate: userList) {
+        boolean duplicateFound = false;
+        HmUser possibleDuplicate;
+        for (int i = 0; i < userList.size(); i++) {
+            possibleDuplicate = userList.get(i);
             if (possibleDuplicate.arcId.equals(userMatch.arcId)) {
-                if (userMatch.deviceIdCreatedAt == HmDataModel.NO_DEVICE_ID_CREATED_ON) {
-                    userToAdd = null;
-                } else if (possibleDuplicate.deviceIdCreatedAt == HmDataModel.NO_DEVICE_ID_CREATED_ON) {
-                    duplicateUserToRemove = possibleDuplicate;
-                } else if (possibleDuplicate.deviceIdCreatedAt >= userMatch.deviceIdCreatedAt) {
-                    userToAdd = null;
-                } else if (userMatch.deviceIdCreatedAt >= possibleDuplicate.deviceIdCreatedAt) {
-                    duplicateUserToRemove = possibleDuplicate;
+                if (duplicateFound) {
+                    // If we found multiple duplicates, the List is in a bad state, and we should error out
+                    throw new IllegalArgumentException(
+                            "Multiple duplicates found for ARC ID " + userMatch.arcId);
+                }
+                duplicateFound = true;
+                if (userMatch.deviceIdCreatedAt != HmDataModel.NO_DEVICE_ID_CREATED_ON &&
+                        userMatch.deviceIdCreatedAt >= possibleDuplicate.deviceIdCreatedAt) {
+                    userList.set(i, userMatch); // replace the 'duplicate' with the new value
                 }
             }
         }
-        if (duplicateUserToRemove != null) {
-            userList.remove(duplicateUserToRemove);
-        }
-        if (userToAdd != null) {
-            userList.add(userToAdd);
+        // Add the user if it had no duplicate found.
+        // If a duplicate was found, its addition was already handled in the for-loop.
+        if (!duplicateFound) {
+            userList.add(userMatch);
         }
     }
 
