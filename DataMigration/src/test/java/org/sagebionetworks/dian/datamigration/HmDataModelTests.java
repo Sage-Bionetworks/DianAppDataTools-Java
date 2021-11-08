@@ -217,9 +217,11 @@ public class HmDataModelTests {
         HmDataModel.TableRow.ParticipantDeviceId[] userDeviceIdList =
                 new HmDataModel.TableRow.ParticipantDeviceId[] {
                         new HmDataModel.TableRow.ParticipantDeviceId(
-                                "1", "1", "d1a5cbaf-288c-48dd-9d4a-98c90213ac01"),
+                                "1", "1",
+                                "d1a5cbaf-288c-48dd-9d4a-98c90213ac01", "1576165222"),
                         new HmDataModel.TableRow.ParticipantDeviceId(
-                                "2", "2", "abc5cbaf-288c-48dd-9d4a-98c90213ac01")
+                                "2", "2",
+                                "abc5cbaf-288c-48dd-9d4a-98c90213ac01", "1576165222")
                 };
 
         HmDataModel.TableRow.ParticipantDeviceId deviceId =
@@ -378,7 +380,8 @@ public class HmDataModelTests {
         params.notes = new HmDataModel.TableRow.ParticipantNotes("1", "1", "Note");
         params.phone = new HmDataModel.TableRow.ParticipantPhone("1", "1", "+11111111111");
         params.participantDeviceId = new HmDataModel.TableRow.
-                ParticipantDeviceId("1", "1", "d1a5cbaf-288c-48dd-9d4a-98c90213ac01");
+                ParticipantDeviceId("1", "1",
+                "d1a5cbaf-288c-48dd-9d4a-98c90213ac01", "1576165222");
         return params;
     }
 

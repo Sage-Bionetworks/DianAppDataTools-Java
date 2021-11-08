@@ -40,8 +40,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -171,33 +173,21 @@ public class MigrationTests {
         List<HmUser> users = MigrationUtil.createHmUserRaterData(participantPathList);
 
         assertNotNull(users);
-        assertEquals(9, users.size());
+        assertEquals(8, users.size());
 
+        // Two participant entries have Arc ID "000001", but this one has a more recent Device ID
         HmUser user = users.get(0);
         assertEquals("000001", user.arcId);
-        assertEquals("c715b9dc-a670-45bf-92c9-b4e5142e3e4f", user.externalId);
-        assertEquals("c715b9dc-a670-45bf-92c9-b4e5142e3e4f", user.password);
-        assertEquals("c715b9dc-a670-45bf-92c9-b4e5142e3e4f", user.deviceId);
-        assertEquals("EXR_Test1", user.name);
-        assertEquals("1-WashU", user.studyId);
-        assertNotNull(user.phone);
-        assertEquals("+11111111111", user.phone);
-        assertEquals("rater1@test.edu", user.rater.email);
-        assertEquals("1-WashU", user.siteLocation.name);
-        assertEquals(":)", user.notes);
+        assertEquals("abc87c9d-5d9b-48a6-943a-48680fd57a2c", user.deviceId);
+        assertNull(user.name);
+        assertEquals("3-Sage", user.studyId);
+        assertEquals("3-Sage", user.studyId);
+        assertNull(user.phone);
+        assertEquals("rater3@test.edu", user.rater.email);
+        assertEquals("3-Sage", user.siteLocation.name);
+        assertNull(user.notes);
 
-         user = users.get(1);
-         assertEquals("000001", user.arcId);
-         assertEquals("abc87c9d-5d9b-48a6-943a-48680fd57a2c", user.deviceId);
-         assertNull(user.name);
-         assertEquals("3-Sage", user.studyId);
-         assertEquals("3-Sage", user.studyId);
-         assertNull(user.phone);
-         assertEquals("rater3@test.edu", user.rater.email);
-         assertEquals("3-Sage", user.siteLocation.name);
-         assertNull(user.notes);
-
-        user = users.get(2);
+        user = users.get(1);
         assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", user.externalId);
         assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", user.password);
         assertEquals("000002", user.arcId);
@@ -210,7 +200,7 @@ public class MigrationTests {
         assertEquals("1-WashU", user.siteLocation.name);
         assertEquals("Dropping this participant 11/30/20 by Michelle", user.notes);
 
-        user = users.get(3);
+        user = users.get(2);
         assertEquals("200007", user.arcId);
         assertEquals("E402924D-34CE-443B-9E53-C0466440D622", user.externalId);
         assertEquals("E402924D-34CE-443B-9E53-C0466440D622", user.password);
@@ -222,7 +212,7 @@ public class MigrationTests {
         assertEquals("2-SDP", user.siteLocation.name);
         assertNull(user.notes);
 
-        user = users.get(4);
+        user = users.get(3);
         assertEquals("555555", user.arcId);
         assertEquals("7799c212-49aa-417a-8f8d-a7d50390d558", user.externalId);
         assertEquals("7799c212-49aa-417a-8f8d-a7d50390d558", user.password);
@@ -234,7 +224,7 @@ public class MigrationTests {
         assertEquals("2-SDP", user.siteLocation.name);
         assertEquals("Registered to site A", user.notes);
 
-        user = users.get(5);
+        user = users.get(4);
         assertEquals("626017", user.arcId);
         assertEquals("193A86E0-892F-4230-9688-2D9E4B1556F9", user.externalId);
         assertEquals("193A86E0-892F-4230-9688-2D9E4B1556F9", user.password);
@@ -248,7 +238,7 @@ public class MigrationTests {
 
         // When a user does not have a device-id, but does have a site location
         // We create a new account for them with the Arc ID.
-        user = users.get(6);
+        user = users.get(5);
         assertEquals("777777", user.arcId);
         assertEquals("777777", user.externalId);
         assertNotNull(user.password);
@@ -265,7 +255,7 @@ public class MigrationTests {
         // When a user does not have a site location,
         // we create a new account for them with the Arc ID
         // And store it in the Happy-Medium-Errors project
-        user = users.get(7);
+        user = users.get(6);
         assertEquals("888888", user.arcId);
         assertEquals("888888", user.externalId);
         assertNotNull(user.password);
@@ -279,7 +269,7 @@ public class MigrationTests {
         assertNull(user.siteLocation);
         assertEquals(" Could not find site location ", user.notes);
 
-        user = users.get(8);
+        user = users.get(7);
         assertEquals("999999", user.arcId);
         assertEquals("cef87c9d-5d9b-48a6-943a-48680fd57a2c", user.deviceId);
         assertEquals("NoRaterYet", user.name);
@@ -288,6 +278,13 @@ public class MigrationTests {
         assertNull(user.rater);
         assertEquals("3-Sage", user.siteLocation.name);
         assertNull(user.notes);
+
+        // We should also check that there are no duplicate Arc IDs in the list
+        Set<String> arcIdSet = new HashSet<>();
+        for (HmUser arcUser : users) {
+            arcIdSet.add(arcUser.arcId);
+        }
+        assertEquals(arcIdSet.size(), users.size());
     }
 
     @Test
@@ -411,5 +408,77 @@ public class MigrationTests {
         assertNull(bridgifySiteName(siteName));
         siteName = "St.Louis' Site";
         assertEquals("StLouisSite", MigrationUtil.bridgifySiteName(siteName));
+    }
+
+    @Test
+    public void addUniqueUserAndResolveConflicts() {
+        List<HmUser> userList = new ArrayList<>();
+        HmUser user = BridgeJavaSdkUtilTests.createNewUser();
+        user.deviceIdCreatedAt = NO_DEVICE_ID_CREATED_ON;
+
+        MigrationUtil.addUniqueUserAndResolveConflicts(user, userList);
+        assertEquals(1, userList.size());
+        assertEquals("000000", userList.get(0).arcId);
+        assertEquals(NO_DEVICE_ID_CREATED_ON,  userList.get(0).deviceIdCreatedAt);
+
+        // Attempting to add duplicate user, won't add it again
+        MigrationUtil.addUniqueUserAndResolveConflicts(user, userList);
+        assertEquals(1, userList.size());
+        assertEquals("000000", userList.get(0).arcId);
+        assertEquals(NO_DEVICE_ID_CREATED_ON,  userList.get(0).deviceIdCreatedAt);
+
+        user = BridgeJavaSdkUtilTests.createExistingUser();
+        user.deviceIdCreatedAt = 1L;
+        // Adding a duplicate ARC ID user with a more recent Device ID, should remove
+        // the previous user in the list, and add this new one in.
+        MigrationUtil.addUniqueUserAndResolveConflicts(user, userList);
+        assertEquals(1, userList.size());
+        assertEquals("000000", userList.get(0).arcId);
+        assertEquals(1,  userList.get(0).deviceIdCreatedAt);
+
+        user = BridgeJavaSdkUtilTests.createExistingUser();
+        user.arcId = "000001";
+        user.deviceIdCreatedAt = 1L;
+        // Adding a duplicate ARC ID user with a more recent Device ID, should remove
+        // the previous user in the list, and add this new one in.
+        MigrationUtil.addUniqueUserAndResolveConflicts(user, userList);
+        assertEquals(2, userList.size());
+        assertEquals("000000", userList.get(0).arcId);
+        assertEquals(1,  userList.get(0).deviceIdCreatedAt);
+        assertEquals("000001", userList.get(1).arcId);
+        assertEquals(1, userList.get(1).deviceIdCreatedAt);
+
+        user = BridgeJavaSdkUtilTests.createExistingUser();
+        user.arcId = "000001";
+        user.deviceIdCreatedAt = 2L;
+        // Adding a duplicate ARC ID user with a more recent Device ID, should remove
+        // the previous user in the list, and add this new one in.
+        MigrationUtil.addUniqueUserAndResolveConflicts(user, userList);
+        assertEquals("000000", userList.get(0).arcId);
+        assertEquals(1, userList.get(0).deviceIdCreatedAt);
+        assertEquals("000001", userList.get(1).arcId);
+        assertEquals(2, userList.get(1).deviceIdCreatedAt);
+
+        user = BridgeJavaSdkUtilTests.createExistingUser();
+        user.arcId = "000001";
+        user.deviceIdCreatedAt = NO_DEVICE_ID_CREATED_ON;
+        // Adding a duplicate ARC ID user with an older Device ID,
+        // should not have it added to the list.
+        MigrationUtil.addUniqueUserAndResolveConflicts(user, userList);
+        assertEquals("000000", userList.get(0).arcId);
+        assertEquals(1, userList.get(0).deviceIdCreatedAt);
+        assertEquals("000001", userList.get(1).arcId);
+        assertEquals(2, userList.get(1).deviceIdCreatedAt);
+
+        user = BridgeJavaSdkUtilTests.createExistingUser();
+        user.arcId = "000001";
+        user.deviceIdCreatedAt = 1L;
+        // Adding a duplicate ARC ID user with an older Device ID,
+        // should not have it added to the list.
+        MigrationUtil.addUniqueUserAndResolveConflicts(user, userList);
+        assertEquals("000000", userList.get(0).arcId);
+        assertEquals(1, userList.get(0).deviceIdCreatedAt);
+        assertEquals("000001", userList.get(1).arcId);
+        assertEquals(2, userList.get(1).deviceIdCreatedAt);
     }
 }

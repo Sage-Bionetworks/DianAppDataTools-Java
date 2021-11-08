@@ -58,7 +58,8 @@ public class PasswordGenerator {
     public static final String NUMERIC = "123456789";
     // Bridge password must contain at least one symbol ( !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ );
     // This subset of symbols was chosen because they would be easier to communicate over the phone
-    public static final String SYMBOLIC = "!#$%&'*+,-.:;=?@_";
+    // As well as removing some that the older participants wouldn't understand
+    public static final String SYMBOLIC = "&.!?";
 
     private static final char[] UPPERCASE_ARRAY = UPPERCASE.toCharArray();
     private static final char[] LOWERCASE_ARRAY = LOWERCASE.toCharArray();
