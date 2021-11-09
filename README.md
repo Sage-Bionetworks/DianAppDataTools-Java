@@ -1,16 +1,19 @@
 # DianUserMigration-Java
 This repository contains code for mapping user data from periodic Happy Medium (HM) exports to Synapse into a Sage Bridge project.
 
-# Project setup:
+# Project setup
 
 Before you can run the code, your environment must have the following environmental variables set first:
 
 ## Required
 **BR_EMAIL** - Your email to sign into the Arc Validation or DIAN bridge project
+
 **BR_PW** - Your password to sign into the Arc Validation or DIAN bridge project
+
 **BR_ID** - The bridge project ID for either the Arc Validation or DIAN bridge project
 
 **SYN_PAT** - Your Synapse access token to your account that has read/download access for the dian uat or dian prod Synapse projects.
+
 **SYN_PROJ_ID** - The Synapse Project ID for dian uat or dian prod.
 
 # Building and running the code
