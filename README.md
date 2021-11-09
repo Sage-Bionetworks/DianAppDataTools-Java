@@ -40,13 +40,14 @@ ghcr.io/sage-bionetworks/diandatamigration:release-test1
 The github action **docker_release.yml** handles creating and deploying the docker image to Sage's github packages only on a push to a release/* branch.
 
 To run the docker image in the example above, you need to run the following commands:
+
 ```
 docker login ghcr.io -u $your_git_username -p $your_git_personal_access_token
 docker pull ghcr.io/sage-bionetworks/diandatamigration:release-test1
 docker run -e BR_ID=$BR_ID -e BR_EMAIL=$BR_EMAIL -e BR_PW=$BR_PW -e SYN_PROJ_ID=$SYN_PROJ_ID -e SYN_PAT=$SYN_PAT ghcr.io/sage-bionetworks/diandatamigration:release-test1
 ```
 
-# User Migration Background Info:
+# User Migration Background Info
 To fully understand the migration process, there are a few terms that need described.
 
 **Arc ID:** This is a 6 digit unique identifier used to keep track of a participant.  In Sage Bridge terms, this is a user’s External ID.
@@ -148,7 +149,8 @@ The test session schedule defines when a user must do their testing. It is a JSO
 ### Completed Test Sessions
 On HM’s server, earnings was calculated using a rest API call by checking which test sessions were completed by the user for each testing cycle.
 We do not have that service on Bridge, and so that calculation needs to happen locally in the app.  For the calculation to work, we need a list of which test session a user has completed with the week, day, and session indexes.
-By parsing all test sessions for a user, a list of completed tests can be calculated, with the completed test data model looking like this:
+By parsing all test sessions for a user, a list of completed tests can be calculated, with the completed test data model looking like this
+
 ```
 {
     “week”: Int,  // the week in the study, cycle 1 is week 0, and cycle 2, is week 25
@@ -162,16 +164,21 @@ By parsing all test sessions for a user, a list of completed tests can be calcul
 Daily, early in the morning, HM will export the day’s changes to availability schedules, testing schedules, and completed test sessions.
 
 The folders will be named based on the date format "YYYY-MM-DD", for example, a folder will be named like this:
+
 ```
 2021-07-08
 ```
+
 Each of these folders will have the following folder children:
+
 ```
 test_session
 test_session_schedule
 wake_sleep_schedule
 ```
+
 Within each of these folders will be a ZIP file, containing the exported data of that type.  For example, the folder test_session, would have this ZIP in it:
+
 ```
 test_sessions_2021-07-08.zip
 ```
