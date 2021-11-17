@@ -14,11 +14,29 @@ public class PasswordGeneratorTests {
     @Test
     public void test_createBridgePassword() throws IOException {
         // Test 10000 bridge passwords for validity
+        Map<Integer, Integer> counts = new HashMap<>();
+        for (int i = 0; i < 9; i++) {
+            counts.put(i, 0);
+        }
+
         for (int i = 0; i < 10000; i++) {
             String password = PasswordGenerator.INSTANCE.nextPassword();
             assertNotNull(password);
             assertEquals(9, password.length());
             assertTrue(isValidBridgePassword(password));
+
+            // Add to the counts of where each symbol is
+            for (int j = 0; j < PasswordGenerator.SYMBOLIC.length(); j++) {
+                int symbolIdx =  password.indexOf(PasswordGenerator.SYMBOLIC.charAt(j));
+                if (symbolIdx >= 0) {
+                    counts.put(symbolIdx, counts.get(symbolIdx) + 1);
+                }
+            }
+        }
+
+        for (int i = 0; i < 9; i++) {
+            // Make sure that the distribution has at least 1% of the distribution
+            assertTrue(counts.get(i) > 10);
         }
     }
 

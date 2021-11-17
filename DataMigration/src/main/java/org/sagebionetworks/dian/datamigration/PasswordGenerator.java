@@ -36,6 +36,7 @@ import com.google.common.collect.Sets;
 
 import java.security.SecureRandom;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 public class PasswordGenerator {
@@ -92,7 +93,7 @@ public class PasswordGenerator {
     }
 
     private Set<Integer> getFourUniqueIntegers(int max) {
-        Set<Integer> set = Sets.newHashSetWithExpectedSize(4);
+        LinkedHashSet<Integer> set = new LinkedHashSet<>(4);
         while (set.size() < 4) {
             set.add(RANDOM.nextInt(max));
         }
