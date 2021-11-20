@@ -166,7 +166,7 @@ public class PathsHelperTests {
                 return o1.getParent().getFileName().toString().compareTo(
                         o2.getParent().getFileName().toString());
             }
-            return o1.getFileName().compareTo(o2.getFileName());
+            return o1.getFileName().toString().compareTo(o2.getFileName().toString());
         });
         assertEquals("a.json", files.get(0).getFileName().toString());
         assertEquals("FolderA", files.get(0).getParent().getFileName().toString());
