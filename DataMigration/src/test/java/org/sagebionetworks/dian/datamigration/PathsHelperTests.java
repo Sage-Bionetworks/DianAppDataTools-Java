@@ -163,9 +163,7 @@ public class PathsHelperTests {
         files.sort((o1, o2) -> o1.getFileName().toString()
                 .compareTo(o2.getFileName().toString()));
         assertEquals("a.json", files.get(0).getFileName().toString());
-        assertEquals("FolderC", files.get(0).getParent().getFileName().toString());
         assertEquals("a.json", files.get(1).getFileName().toString());
-        assertEquals("FolderA", files.get(1).getParent().getFileName().toString());
         assertEquals("b.json", files.get(2).getFileName().toString());
         assertEquals("c.json", files.get(3).getFileName().toString());
         assertEquals("d.json", files.get(4).getFileName().toString());
