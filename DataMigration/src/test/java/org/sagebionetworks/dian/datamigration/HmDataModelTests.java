@@ -57,7 +57,7 @@ public class HmDataModelTests {
         assertEquals("SiteA", user.studyId);
         assertEquals("+11111111111", user.phone);
         // Existing users will migrate with their password as also their Device ID
-        assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", user.password);
+        assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01Arc#", user.password);
         assertNull(user.name);
         assertEquals("Note", user.notes);
         assertEquals(user.rater.email, params.rater.email);
