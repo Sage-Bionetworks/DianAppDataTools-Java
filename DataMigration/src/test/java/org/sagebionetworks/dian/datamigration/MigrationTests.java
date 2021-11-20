@@ -189,7 +189,7 @@ public class MigrationTests {
 
         user = users.get(1);
         assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", user.externalId);
-        assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", user.password);
+        assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01Arc#", user.password);
         assertEquals("000002", user.arcId);
         assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", user.deviceId);
         assertEquals("EXR_Test2", user.name);
@@ -203,7 +203,7 @@ public class MigrationTests {
         user = users.get(2);
         assertEquals("200007", user.arcId);
         assertEquals("E402924D-34CE-443B-9E53-C0466440D622", user.externalId);
-        assertEquals("E402924D-34CE-443B-9E53-C0466440D622", user.password);
+        assertEquals("E402924D-34CE-443B-9E53-C0466440D622Arc#", user.password);
         assertEquals("E402924D-34CE-443B-9E53-C0466440D622", user.deviceId);
         assertEquals("HASD_Test2", user.name);
         assertEquals("2-SDP", user.studyId);
@@ -215,7 +215,7 @@ public class MigrationTests {
         user = users.get(3);
         assertEquals("555555", user.arcId);
         assertEquals("7799c212-49aa-417a-8f8d-a7d50390d558", user.externalId);
-        assertEquals("7799c212-49aa-417a-8f8d-a7d50390d558", user.password);
+        assertEquals("7799c212-49aa-417a-8f8d-a7d50390d558Arc#", user.password);
         assertEquals("7799c212-49aa-417a-8f8d-a7d50390d558", user.deviceId);
         assertEquals("HASD_Test1", user.name);
         assertEquals("2-SDP", user.studyId);
@@ -227,7 +227,7 @@ public class MigrationTests {
         user = users.get(4);
         assertEquals("626017", user.arcId);
         assertEquals("193A86E0-892F-4230-9688-2D9E4B1556F9", user.externalId);
-        assertEquals("193A86E0-892F-4230-9688-2D9E4B1556F9", user.password);
+        assertEquals("193A86E0-892F-4230-9688-2D9E4B1556F9Arc#", user.password);
         assertEquals("193A86E0-892F-4230-9688-2D9E4B1556F9", user.deviceId);
         assertEquals("OBS_Test1", user.name);
         assertEquals("3-Sage", user.studyId);

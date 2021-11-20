@@ -88,7 +88,7 @@ Before the migration can complete successfully, a sub-study must be created for 
 Depending on the state of the user, there are three migration scenarios that can occur.
 ### Migrating existing users
 A user is existing if they have an Arc ID, a site location, and a Device ID.
-These users will not have their account created yet with their Arc ID as their External ID.  Instead, the migration code will create an External ID that is their Device ID. The password for this account will also be their Device ID.
+These users will not have their account created yet with their Arc ID as their External ID.  Instead, the migration code will create an External ID that is their Device ID. The password for this account will also be their Device ID, plus the String "Arc#" that enables it to meet Bridge's password requirements.
 
 The migration code marks this user with the **test_user** data group, has their user attribute **IS_MIGRATED** set to **false**, and populates the account with that user's data.
 

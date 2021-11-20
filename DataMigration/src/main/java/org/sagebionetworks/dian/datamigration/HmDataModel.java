@@ -52,6 +52,8 @@ import static org.sagebionetworks.dian.datamigration.MigrationUtil.NO_DEVICE_ID;
 public class HmDataModel {
 
     public static final long NO_DEVICE_ID_CREATED_ON = 0;
+    // Device IDs cannot meet the bridge password requirements alone, so append this to the end
+    public static final String ARC_PASSWORD_REQUIREMENTS = "Arc#";
 
     /**
      * This class is used to compile the need to know data
@@ -169,7 +171,7 @@ public class HmDataModel {
             this.deviceId = participantDeviceId.device_id;
             this.deviceIdCreatedAt = Long.parseLong(participantDeviceId.created_at);
             this.externalId = this.deviceId;
-            this.password = this.deviceId;
+            this.password = this.deviceId + ARC_PASSWORD_REQUIREMENTS;
         }
     }
 
