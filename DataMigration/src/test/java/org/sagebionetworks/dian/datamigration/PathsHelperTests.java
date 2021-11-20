@@ -41,6 +41,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -160,10 +161,17 @@ public class PathsHelperTests {
         assertNotNull(files);
         assertEquals(6, files.size());
         // Sort so that we can access by index
-        files.sort((o1, o2) -> o1.getFileName().toString()
-                .compareTo(o2.getFileName().toString()));
+        files.sort((o1, o2) -> {
+            if (o1.getFileName().toString().equals(o2.getFileName().toString())) {
+                return o1.getParent().getFileName().toString().compareTo(
+                        o2.getParent().getFileName().toString());
+            }
+            return o1.getFileName().compareTo(o2.getFileName());
+        });
         assertEquals("a.json", files.get(0).getFileName().toString());
+        assertEquals("FolderA", files.get(0).getParent().getFileName().toString());
         assertEquals("a.json", files.get(1).getFileName().toString());
+        assertEquals("FolderC", files.get(1).getParent().getFileName().toString());
         assertEquals("b.json", files.get(2).getFileName().toString());
         assertEquals("c.json", files.get(3).getFileName().toString());
         assertEquals("d.json", files.get(4).getFileName().toString());
