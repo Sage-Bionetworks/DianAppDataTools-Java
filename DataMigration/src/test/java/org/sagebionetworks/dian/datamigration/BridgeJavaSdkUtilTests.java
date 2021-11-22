@@ -314,15 +314,17 @@ public class BridgeJavaSdkUtilTests extends Mockito {
         HmDataModel.HmUser user = new HmDataModel.HmUser();
         String password = "5tm95s?ES?qTx5iGeLmb";
         user.arcId = "000000";
+        user.externalId = "000000";
         user.password = password;
         Map<String, String> attributes = BridgeJavaSdkUtil.newUserAttributes(user);
         assertNotNull(attributes);
         assertEquals("000000", attributes.get("ARC_ID"));
         assertEquals(password, attributes.get("VERIFICATION_CODE"));
+        assertEquals("No rater assigned yet", attributes.get("RATER_EMAIL"));
+        // New users that are Arc IDs do not need migrated, and should not be labeled as such
+        assertNull(attributes.get("IS_MIGRATED"));
         assertNull(attributes.get("PHONE_NUMBER"));
         assertNull(attributes.get("SITE_NOTES"));
-        assertEquals("false", attributes.get("IS_MIGRATED"));
-        assertEquals("No rater assigned yet", attributes.get("RATER_EMAIL"));
     }
 
     @Test
@@ -330,6 +332,8 @@ public class BridgeJavaSdkUtilTests extends Mockito {
         HmDataModel.HmUser user = new HmDataModel.HmUser();
         String password = "5tm95s?ES?qTx5iGeLmb";
         user.arcId = "000000";
+        user.externalId = "d1a5cbaf-288c-48dd-9d4a-98c90213ac01";
+        user.deviceId = "d1a5cbaf-288c-48dd-9d4a-98c90213ac01";
         user.password = password;
         user.phone = "+11111111111";
         user.notes = "Notes";

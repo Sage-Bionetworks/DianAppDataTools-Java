@@ -248,7 +248,13 @@ public class BridgeJavaSdkUtil {
         if (user.phone != null) {
             attributeMap.put(ATTRIBUTE_PHONE_NUM, user.phone);
         }
-        attributeMap.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_FALSE);
+
+        // If the new user is a 6-digit Arc ID, there is no need for IS_MIGRATED to have a value.
+        // IS_MIGRATED is meant for migration accounts that have long Device IDs as their external IDs.
+        if (user.externalId.length() != MigrationUtil.PARTICIPANT_ID_LENGTH) {
+            attributeMap.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_FALSE);
+        }
+
         attributeMap.put(ATTRIBUTE_ARC_ID, user.arcId);
         attributeMap.put(ATTRIBUTE_RATER_EMAIL, raterEmail);
 
