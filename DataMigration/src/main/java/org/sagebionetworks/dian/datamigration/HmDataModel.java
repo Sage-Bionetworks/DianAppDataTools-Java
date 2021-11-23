@@ -145,7 +145,7 @@ public class HmDataModel {
                 return;
             }
 
-            site.name = MigrationUtil.bridgifySiteName(site.name);
+            site.name = MigrationUtil.bridgifyAndTranslateSiteName(site.name);
             // We can assign these for the remaining cases
             this.studyId = site.name;
             this.siteLocation = site;

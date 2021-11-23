@@ -78,6 +78,13 @@ public class MigrationUtil {
     public static String ERROR_STUDY_ID = "Happy-Medium-Errors";
     public static String NO_DEVICE_ID = "No-Device-Id";
 
+    public static final String EXR_SITE_LOCATION = "EXR";
+    public static final String LEGACY_EXR_SITE_LOCATION = "Legacy";
+    // There are some site IDs that need translated to other site locations, define them here
+    public static Map<String, String> SITE_LOCATION_TRANSLATION  = new HashMap<String, String>() {{
+        put(LEGACY_EXR_SITE_LOCATION, EXR_SITE_LOCATION);
+    }};
+
     /**
      * Each file in the parameter list represents a directory
      * where the user's data JSON files were unzipped to.
@@ -370,14 +377,22 @@ public class MigrationUtil {
     /**
      * Bridge does not allow apostrophes, periods, or spaces in site names,
      * and HappyMedium had some, so we must remove them.
+     * There are some site IDs that need translated to other site's,
+     * like "Legacy" belongs in "EXR", so do that as well here.
      * @param siteName to convert to a bridge acceptable site name
      * @return the converted site name
      */
-    public static String bridgifySiteName(String siteName) {
+    public static String bridgifyAndTranslateSiteName(String siteName) {
         if (siteName == null) {
             return null;
         }
-        return siteName.replace("'", "")
+        String adjustedSiteName = siteName;
+        for (String siteNameKey : SITE_LOCATION_TRANSLATION.keySet()) {
+            if (siteNameKey.equals(siteName)) {
+                adjustedSiteName = SITE_LOCATION_TRANSLATION.get(siteNameKey);
+            }
+        }
+        return adjustedSiteName.replace("'", "")
                 .replace(".", "")
                 .replace(" ", "");
     }

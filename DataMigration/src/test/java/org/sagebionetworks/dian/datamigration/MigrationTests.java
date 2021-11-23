@@ -33,7 +33,6 @@
 package org.sagebionetworks.dian.datamigration;
 
 import org.junit.Test;
-import org.junit.function.ThrowingRunnable;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -405,9 +404,16 @@ public class MigrationTests {
     @Test
     public void test_bridgifySiteName() {
         String siteName = null;
-        assertNull(bridgifySiteName(siteName));
+        assertNull(bridgifyAndTranslateSiteName(siteName));
         siteName = "St.Louis' Site";
-        assertEquals("StLouisSite", MigrationUtil.bridgifySiteName(siteName));
+        assertEquals("StLouisSite", MigrationUtil.bridgifyAndTranslateSiteName(siteName));
+    }
+
+    @Test
+    public void test_translateSiteName() {
+        assertEquals("legacy", MigrationUtil.bridgifyAndTranslateSiteName("legacy"));
+        // Must be case-sensitive exact match to move users from "Legacy" to "EXR"
+        assertEquals("EXR", MigrationUtil.bridgifyAndTranslateSiteName("Legacy"));
     }
 
     @Test
