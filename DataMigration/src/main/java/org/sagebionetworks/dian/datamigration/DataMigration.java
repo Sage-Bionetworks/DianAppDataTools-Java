@@ -81,13 +81,13 @@ public class DataMigration {
 
         // Migrate all users and their data
         List<Exception> exceptions = new ArrayList<Exception>();
-        try {
-	        for (HmUser user: userList) {
-	            HmUserData data = MigrationUtil.findMatchingData(user, userDataList);
-	            BridgeJavaSdkUtil.migrateUser(user, data);
-	        }
-        } catch (Exception e) {
-        	exceptions.add(e);
+        for (HmUser user: userList) {
+        	try {
+        		HmUserData data = MigrationUtil.findMatchingData(user, userDataList);
+        		BridgeJavaSdkUtil.migrateUser(user, data);
+        	} catch (Exception e) {
+        		exceptions.add(e);
+        	}
         }
         if (!exceptions.isEmpty()) {
         	// throw one big exception
