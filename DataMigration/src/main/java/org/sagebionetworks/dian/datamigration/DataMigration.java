@@ -32,12 +32,14 @@
 
 package org.sagebionetworks.dian.datamigration;
 
-import org.sagebionetworks.client.exceptions.SynapseException;
-import org.sagebionetworks.dian.datamigration.HmDataModel.*;
-
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.sagebionetworks.client.exceptions.SynapseException;
+import org.sagebionetworks.dian.datamigration.HmDataModel.HmUser;
+import org.sagebionetworks.dian.datamigration.HmDataModel.HmUserData;
 
 /**
  * Main executable class for the data migration from HappyMedium to Sage Bionetworks
@@ -78,9 +80,25 @@ public class DataMigration {
                 SynapseUtil.DownloadFolder.wake_sleep_schedule.unzippedFolder());
 
         // Migrate all users and their data
+        List<Exception> exceptions = new ArrayList<Exception>();
         for (HmUser user: userList) {
-            HmUserData data = MigrationUtil.findMatchingData(user, userDataList);
-            BridgeJavaSdkUtil.migrateUser(user, data);
+        	try {
+        		HmUserData data = MigrationUtil.findMatchingData(user, userDataList);
+        		BridgeJavaSdkUtil.migrateUser(user, data);
+        	} catch (Exception e) {
+        		exceptions.add(e);
+        	}
+        }
+        if (!exceptions.isEmpty()) {
+        	// throw one big exception
+        	StringBuilder cumulativeMessages = new StringBuilder();
+        	for (Exception e : exceptions) {
+        		String m = e.getMessage();
+        		if (m!=null && m.length()>0) {
+        			cumulativeMessages.append(m+"\n");
+        		}
+        	}
+        	throw new RuntimeException(cumulativeMessages.toString());
         }
 
         System.out.println("Completed data migration successfully");
