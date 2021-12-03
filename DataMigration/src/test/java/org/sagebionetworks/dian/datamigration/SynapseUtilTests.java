@@ -116,6 +116,31 @@ public class SynapseUtilTests {
         assertEquals("unique_test_session.zip", zipHeader.getName());
     }
 
+    @Test
+    public void testFindAllZips() {
+        List<EntityHeader> entities = new ArrayList<>();
+        entities.add(createEntity("a.zip"));
+        entities.add(createEntity("test_session"));
+        entities.add(createEntity("b.zip"));
+        entities.add(createEntity("test_session_schedule"));
+        entities.add(createEntity("wake_sleep_schedule"));
+        entities.add(createEntity("2021-09-24"));
+        entities.add(createEntity("2021-10-01"));
+        entities.add(createEntity("2021-10-10"));
+        entities.add(createEntity("abcdefg.zip"));
+        entities.add(createEntity("adsfefsefs2021-10-10.zip"));
+        entities.add(createEntity("adsfefsefs2021-10-12.zip"));
+
+        List<EntityHeader> zipHeaderList = SynapseUtil.getAllZipFilesFromEntityList(entities);
+        assertNotNull(zipHeaderList);
+        assertEquals(5, zipHeaderList.size());
+        assertEquals("a.zip", zipHeaderList.get(0).getName());
+        assertEquals("b.zip", zipHeaderList.get(1).getName());
+        assertEquals("abcdefg.zip", zipHeaderList.get(2).getName());
+        assertEquals("adsfefsefs2021-10-10.zip", zipHeaderList.get(3).getName());
+        assertEquals("adsfefsefs2021-10-12.zip", zipHeaderList.get(4).getName());
+    }
+
     private EntityHeader createEntity(String name) {
         EntityHeader entity = new EntityHeader();
         entity.setName(name);
