@@ -230,7 +230,6 @@ public class SynapseUtil {
     /**
      * @param entityHeaderList to search for all ZIP files
      * @returns all ZIP files in the folder, an empty list otherwise
-     * @throws SynapseException
      */
     public static @NonNull List<EntityHeader> getAllZipFilesFromEntityList(
             @NonNull List<EntityHeader> entityHeaderList) {
