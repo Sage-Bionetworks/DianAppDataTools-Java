@@ -150,20 +150,23 @@ public class SynapseUtil {
                         findFolderWithName(downloadFolder.name(), entityHeaderList);
                 List<EntityHeader> fileEntityList =
                         getAllEntityChildren(downloadFolderEntity.getId(), EntityType.file);
-                // Get the first ZIP in the folder
-                EntityHeader zipEntity = zipFileFromEntityList(
-                        fileEntityList, null, null);
-                FileHandleAssociation file = createFileHandlAssociation(zipEntity);
 
-                String downloadFileName = file.getAssociateObjectId() + ".zip";
-                System.out.println("Downloading file " + downloadFileName);
-                File downloadFolderFile = downloadFolder
-                        .downloadFolder().resolve(downloadFileName).toFile();
-                synapse.downloadFile(file, downloadFolderFile);
+                // Get all ZIP files in the data folder
+                List<EntityHeader> zipEntityList = getAllZipFilesFromEntityList(fileEntityList);
+                for (EntityHeader zipEntity : zipEntityList) {
+                    // Download and unzip each data archive individually
+                    FileHandleAssociation file = createFileHandlAssociation(zipEntity);
 
-                System.out.println("Unzipping file " + file.getAssociateObjectId() + ".zip");
-                UnzipUtil.unzip(downloadFolderFile.getAbsolutePath(),
-                        downloadFolder.unzippedFolder().toFile().getAbsolutePath());
+                    String downloadFileName = file.getAssociateObjectId() + ".zip";
+                    System.out.println("Downloading file " + downloadFileName);
+                    File downloadFolderFile = downloadFolder
+                            .downloadFolder().resolve(downloadFileName).toFile();
+                    synapse.downloadFile(file, downloadFolderFile);
+
+                    System.out.println("Unzipping file " + file.getAssociateObjectId() + ".zip");
+                    UnzipUtil.unzip(downloadFolderFile.getAbsolutePath(),
+                            downloadFolder.unzippedFolder().toFile().getAbsolutePath());
+                }
             }
         }
     }
@@ -222,6 +225,24 @@ public class SynapseUtil {
         }
 
         return entityHeaderList;
+    }
+
+    /**
+     * @param entityHeaderList to search for all ZIP files
+     * @returns all ZIP files in the folder, an empty list otherwise
+     */
+    public static @NonNull List<EntityHeader> getAllZipFilesFromEntityList(
+            @NonNull List<EntityHeader> entityHeaderList) {
+
+        List<EntityHeader> zipFileList = new ArrayList<>();
+        // Iterate through and get all the ZIP files available
+        for (EntityHeader fileHeader: entityHeaderList) {
+            String fileName = fileHeader.getName();
+            if (fileName.endsWith(ZIP)) {
+                zipFileList.add(fileHeader);
+            }
+        }
+        return zipFileList;
     }
 
     /**
