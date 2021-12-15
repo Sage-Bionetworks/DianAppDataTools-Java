@@ -75,6 +75,22 @@ public class BridgeJavaSdkUtil {
     }
 
     /**
+     * Authenticates the admin user using the parameters provided instead of with env vars.
+     * Must call this before any other functions in this class will succeed.
+     * @param email account for accessing bridge
+     * @param password for email account for accessing bridge
+     * @param bridgeId bridge project identifier
+     * @throws IOException if something went wrong with the network request
+     */
+    public static void initialize(String email, String password, String bridgeId) throws IOException {
+        BRIDGE_EMAIL = email;
+        BRIDGE_PW = password;
+        BRIDGE_ID = bridgeId;
+
+        initialize();
+    }
+
+    /**
      * Authenticates the admin user using the environmental vars for email/password.
      * Must call this before any other functions in this class will succeed.
      * @throws IOException if something went wrong with the network request
