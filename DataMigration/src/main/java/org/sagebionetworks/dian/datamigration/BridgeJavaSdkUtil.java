@@ -13,10 +13,13 @@ import org.sagebionetworks.bridge.rest.api.ParticipantReportsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.ClientInfo;
+import org.sagebionetworks.bridge.rest.model.ExternalIdentifier;
 import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
+import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.StudyList;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 
 import java.io.IOException;
@@ -125,6 +128,29 @@ public class BridgeJavaSdkUtil {
             String userId = researcherApi.createParticipant(signUp).execute().body().getIdentifier();
             writeUserReports(userId, data);
         }
+    }
+
+    /**
+     * @param userId to download reports from
+     * @param reportId of the specific report to download
+     * @return the client data string for the singleton report downloaded from bridge
+     * @throws IOException if something goes wrong
+     */
+    public static String getParticipantReportClientDataString(
+            String userId, String reportId) throws IOException {
+
+        List<ReportData> reports = reportsApi.getUsersParticipantReportRecordsV4(
+                userId, reportId,
+                REPORT_DATE.minusDays(2).toDateTimeAtStartOfDay(),
+                REPORT_DATE.plusDays(2).toDateTimeAtStartOfDay(),
+                null, 50).execute().body().getItems();
+
+        if (reports.size() != 1) {
+            throw new IllegalStateException(reportId +
+                    " report query had none, or more than one result.");
+        }
+
+        return (String)reports.get(0).getData();
     }
 
     /**
@@ -294,5 +320,125 @@ public class BridgeJavaSdkUtil {
         reportData.setLocalDate(REPORT_DATE);
         reportData.setData(clientData);
         return reportData;
+    }
+
+    /**
+     * Per DIAN-181: If an existing HM user has deleted their app in between test cycles,
+     * they will no longer have access to their Device ID, which means they will
+     * not be able to migrate to the Sage app automatically by simply opening the app.
+     *
+     * Once WashU verified that a user is in this state, Ann Campton needs to be able to run a
+     * JAR tool that will manually migrate their account similar to how the Sage mobile app does it.
+     * Once this migration is complete, when the participant re-installs the app,
+     * they will be prompted to sign in with Arc ID and Verification code,
+     * which will be available in the Bridge dashboard under this user's Arc ID.
+     *
+     * @param deviceId to migrate
+     * @throws IOException if something goes wrong
+     */
+    public static void manuallyMigrateUser(String deviceId) throws IOException {
+        StudyParticipant participant =
+                researcherApi.getParticipantByExternalId(deviceId, false).execute().body();
+
+        System.out.println("Downloading availability report...");
+        String availability = getParticipantReportClientDataString(
+                participant.getId(), AVAILABILITY_REPORT_ID);
+        System.out.println("Downloading test schedule report...");
+        String testSchedule = getParticipantReportClientDataString(
+                participant.getId(), TEST_SCHEDULE_REPORT_ID);
+        System.out.println("Downloading completing test report...");
+        String completedTests = getParticipantReportClientDataString(
+                participant.getId(), COMPLETED_TESTS_REPORT_ID);
+
+        Map<String, String> migratedAttributes = new HashMap<>();
+        for (String attrKey : participant.getAttributes().keySet()) {
+            // Skip verification code and isMigrated attributes
+            if (!attrKey.equals(ATTRIBUTE_VERIFICATION_CODE) &&
+                    !attrKey.equals(ATTRIBUTE_IS_MIGRATED)) {
+                migratedAttributes.put(attrKey, participant.getAttributes().get(attrKey));
+            }
+        }
+
+        String arcId = migratedAttributes.get(ATTRIBUTE_ARC_ID);
+        if (arcId.length() != 6) {
+            throw new IllegalStateException("ARC_ID attribute is not 6 characters long");
+        }
+        String password = PasswordGenerator.INSTANCE.nextPassword();
+        migratedAttributes.put(ATTRIBUTE_VERIFICATION_CODE, password);
+
+        String studyId = participant.getStudyIds().get(0);
+
+        SignUp signUp = new SignUp()
+                .externalIds(ImmutableMap.of(studyId, arcId))
+                .password(password)
+                .dataGroups(new ArrayList<>())
+                .sharingScope(SharingScope.ALL_QUALIFIED_RESEARCHERS)
+                .attributes(migratedAttributes);
+
+        System.out.println("Creating participant account on bridge " + arcId);
+        String userId = researcherApi.createParticipant(signUp).execute().body().getIdentifier();
+
+        System.out.println("Writing availability report");
+        reportsApi.addParticipantReportRecordV4(userId, AVAILABILITY_REPORT_ID,
+                makeReportData(availability)).execute();
+
+        System.out.println("Writing test schedule report");
+        reportsApi.addParticipantReportRecordV4(userId, TEST_SCHEDULE_REPORT_ID,
+                makeReportData(testSchedule)).execute();
+
+        System.out.println("Writing completed tests report");
+        reportsApi.addParticipantReportRecordV4(userId, COMPLETED_TESTS_REPORT_ID,
+                makeReportData(completedTests)).execute();
+
+        System.out.println("Setting Device ID account IS_MIGRATED set to true...");
+        Map<String, String> deviceIdAttributes = new HashMap<>();
+        for (String key : participant.getAttributes().keySet()) {
+            if (key.equals(ATTRIBUTE_IS_MIGRATED)) {
+                deviceIdAttributes.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_TRUE);
+            } else {
+                deviceIdAttributes.put(key, participant.getAttributes().get(key));
+            }
+        }
+        StudyParticipant updatedDeviceIdParticipant = new StudyParticipant();
+        updatedDeviceIdParticipant.setAttributes(deviceIdAttributes);
+        researcherApi.updateParticipant(participant.getId(), updatedDeviceIdParticipant).execute();
+
+        System.out.println("User successfully migrated");
+    }
+
+    /**
+     * @return  All users in all studies
+     * @throws IOException if something goes wrong
+     */
+    public static Map<String, List<String>> getAllUsers() throws IOException {
+        Map<String, List<String>> userMap = new HashMap<>();
+
+        List<Study> studyList = researcherApi.getStudies(
+                0, 50, false).execute().body().getItems();
+        for (Study study : studyList) {
+            int offset = 0;
+            List<ExternalIdentifier> externalIdList = new ArrayList<>();
+            do {
+                externalIdList =
+                        researcherApi.getExternalIdsForStudy(
+                                study.getIdentifier(), offset, 100, null)
+                                .execute().body().getItems();
+
+                for (ExternalIdentifier identifier : externalIdList) {
+                    StudyParticipant participant =
+                            researcherApi.getParticipantByExternalId(
+                                    identifier.getIdentifier(), false).execute().body();
+                    String arcID = participant.getAttributes().get("ARC_ID");
+                    if (userMap.get(arcID) == null) {
+                        userMap.put(arcID, new ArrayList<>());
+                    }
+                    List<String> accounts = userMap.get(arcID);
+                    accounts.add(identifier.getIdentifier());
+                }
+                offset += 100;
+            } while(externalIdList.size() >= 100);
+        }
+
+        return userMap;
     }
 }
