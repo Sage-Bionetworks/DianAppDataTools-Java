@@ -231,11 +231,13 @@ public class HmDataModelTests {
                 HmDataModel.TableRow.findParticipantDeviceId("1", userDeviceIdList);
         assertNotNull(deviceId);
         assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", deviceId.device_id);
+        assertEquals("1576165222", deviceId.created_at);
 
         deviceId = HmDataModel.TableRow.findParticipantDeviceId("2", userDeviceIdList);
         assertNotNull(deviceId);
         // There are two matches for that participant, but this is the most recent
         assertEquals("def5cbaf-288c-48dd-9d4a-98c90213ac01", deviceId.device_id);
+        assertEquals("1586165222", deviceId.created_at);
 
         deviceId = HmDataModel.TableRow.findParticipantDeviceId("3", userDeviceIdList);
         assertNull(deviceId);
