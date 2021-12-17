@@ -72,6 +72,22 @@ public class BridgeJavaSdkUtil {
     }
 
     /**
+     * Authenticates the admin user using the parameters provided instead of with env vars.
+     * Must call this before any other functions in this class will succeed.
+     * @param email account for accessing bridge
+     * @param password for email account for accessing bridge
+     * @param bridgeId bridge project identifier
+     * @throws IOException if something went wrong with the network request
+     */
+    public static void initialize(String email, String password, String bridgeId) throws IOException {
+        BRIDGE_EMAIL = email;
+        BRIDGE_PW = password;
+        BRIDGE_ID = bridgeId;
+
+        initialize();
+    }
+
+    /**
      * Authenticates the admin user using the environmental vars for email/password.
      * Must call this before any other functions in this class will succeed.
      * @throws IOException if something went wrong with the network request
@@ -125,6 +141,33 @@ public class BridgeJavaSdkUtil {
             String userId = researcherApi.createParticipant(signUp).execute().body().getIdentifier();
             writeUserReports(userId, data);
         }
+    }
+
+    /**
+     * @param userId to download reports from
+     * @param reportId of the specific report to download
+     * @return the client data string for the singleton report downloaded from bridge
+     * @throws IOException if something goes wrong
+     */
+    public static String getParticipantReportClientDataString(
+            String userId, String reportId) throws IOException {
+
+        List<ReportData> reports = reportsApi.getUsersParticipantReportRecordsV4(
+                userId, reportId,
+                REPORT_DATE.minusDays(2).toDateTimeAtStartOfDay(),
+                REPORT_DATE.plusDays(2).toDateTimeAtStartOfDay(),
+                null, 50).execute().body().getItems();
+
+        if (reports.size() != 1) {
+            throw new IllegalStateException(reportId +
+                    " report query had none, or more than one result.");
+        }
+
+        return (String)reports.get(0).getData();
+    }
+
+    public static StudyParticipant getParticipantByExternalId(String externalId) throws IOException {
+        return researcherApi.getParticipantByExternalId(externalId, false).execute().body();
     }
 
     /**
@@ -208,6 +251,11 @@ public class BridgeJavaSdkUtil {
             reportsApi.addParticipantReportRecordV4(userId, AVAILABILITY_REPORT_ID,
                     makeReportData(PathsHelper.readFile(data.wakeSleepSchedule))).execute();
         }
+    }
+
+    public static void writeUserReport(String userId, String reportId, String json) throws IOException {
+        System.out.println("Writing report " + reportId);
+        reportsApi.addParticipantReportRecordV4(userId, reportId, makeReportData(json)).execute();
     }
 
     /**
