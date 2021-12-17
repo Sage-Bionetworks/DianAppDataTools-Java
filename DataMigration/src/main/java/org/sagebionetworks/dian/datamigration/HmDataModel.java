@@ -39,6 +39,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.sagebionetworks.dian.datamigration.MigrationUtil.ERROR_STUDY_ID;
@@ -275,12 +276,22 @@ public class HmDataModel {
         public static ParticipantDeviceId findParticipantDeviceId(
                 String participantTableId, ParticipantDeviceId[] deviceIdList) {
 
+            List<ParticipantDeviceId> matchingDeviceIds = new ArrayList<>();
             for (ParticipantDeviceId deviceId: deviceIdList) {
                 if (deviceId != null && deviceId.participant.equals(participantTableId)) {
-                    return deviceId;
+                    matchingDeviceIds.add(deviceId);
                 }
             }
-            return null;
+            if (matchingDeviceIds.isEmpty()) {
+                return null;
+            }
+
+            // Sort by oldest first
+            matchingDeviceIds.sort((d1, d2) ->
+                    d1.created_at.compareTo(d2.created_at));
+
+            // Return the last one, which is the most recent
+            return matchingDeviceIds.get(matchingDeviceIds.size() - 1);
         }
 
         @JsonIgnoreProperties(ignoreUnknown = true)

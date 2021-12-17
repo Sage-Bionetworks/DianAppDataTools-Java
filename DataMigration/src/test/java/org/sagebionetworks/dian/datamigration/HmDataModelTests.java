@@ -221,17 +221,23 @@ public class HmDataModelTests {
                                 "d1a5cbaf-288c-48dd-9d4a-98c90213ac01", "1576165222"),
                         new HmDataModel.TableRow.ParticipantDeviceId(
                                 "2", "2",
-                                "abc5cbaf-288c-48dd-9d4a-98c90213ac01", "1576165222")
+                                "abc5cbaf-288c-48dd-9d4a-98c90213ac01", "1576165222"),
+                        new HmDataModel.TableRow.ParticipantDeviceId(
+                                "3", "2",
+                                "def5cbaf-288c-48dd-9d4a-98c90213ac01", "1586165222")
                 };
 
         HmDataModel.TableRow.ParticipantDeviceId deviceId =
                 HmDataModel.TableRow.findParticipantDeviceId("1", userDeviceIdList);
         assertNotNull(deviceId);
         assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", deviceId.device_id);
+        assertEquals("1576165222", deviceId.created_at);
 
         deviceId = HmDataModel.TableRow.findParticipantDeviceId("2", userDeviceIdList);
         assertNotNull(deviceId);
-        assertEquals("abc5cbaf-288c-48dd-9d4a-98c90213ac01", deviceId.device_id);
+        // There are two matches for that participant, but this is the most recent
+        assertEquals("def5cbaf-288c-48dd-9d4a-98c90213ac01", deviceId.device_id);
+        assertEquals("1586165222", deviceId.created_at);
 
         deviceId = HmDataModel.TableRow.findParticipantDeviceId("3", userDeviceIdList);
         assertNull(deviceId);
