@@ -45,16 +45,24 @@ import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantReportsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.model.ExternalIdentifier;
+import org.sagebionetworks.bridge.rest.model.ExternalIdentifierList;
+import org.sagebionetworks.bridge.rest.model.ForwardCursorReportDataList;
 import org.sagebionetworks.bridge.rest.model.IdentifierHolder;
 import org.sagebionetworks.bridge.rest.model.Message;
+import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
 import org.sagebionetworks.bridge.rest.model.SignUp;
+import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.StudyList;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import retrofit2.Call;
@@ -117,6 +125,15 @@ public class BridgeJavaSdkUtilTests extends Mockito {
 
     @Mock
     private Call<StudyParticipant> mockGetExternalIdNotMigratedCall;
+
+    @Mock
+    private Call<StudyList> mockGetAllStudies;
+
+    @Mock
+    private Call<ForwardCursorReportDataList> mockGetUsersParticipantReportRecordsV4;
+
+    @Mock
+    private Call<ExternalIdentifierList> mockGetExternalIdsInStudyA;
 
     @Before
     public void before() throws IOException {
@@ -195,6 +212,41 @@ public class BridgeJavaSdkUtilTests extends Mockito {
                 .thenReturn(Response.success(notMigratedParticipant));
         when(mockResearcherApi.getParticipantByExternalId(eq("999997"), eq(false)))
                 .thenReturn(mockGetExternalIdNotMigratedCall);
+
+        String responseJson = "{\"items\":[{\"data\":\"abcdefg\"}]}";
+        ForwardCursorReportDataList reportResponse = mapper.readValue(
+                responseJson, ForwardCursorReportDataList.class);
+        List<ReportData> items = reportResponse.getItems();
+        when(mockGetUsersParticipantReportRecordsV4.execute())
+                .thenReturn(Response.success(reportResponse));
+        when(mockReportsApi.getUsersParticipantReportRecordsV4(
+                eq("UserId"), eq("ReportId"), any(), any(), any(), anyInt()))
+                .thenReturn(mockGetUsersParticipantReportRecordsV4);
+
+        responseJson = "{\"items\":[{\"identifier\":\"A\"},{\"identifier\":\"B\"}]}";
+        StudyList studyList = mapper.readValue(responseJson, StudyList.class);
+        when(mockGetAllStudies.execute()).thenReturn(Response.success(studyList));
+        when(mockResearcherApi.getStudies(anyInt(), anyInt(), anyBoolean()))
+                .thenReturn(mockGetAllStudies);
+
+        StringBuilder externalIdJson = new StringBuilder("{\"items\":[");
+        for (int i = 0; i < 100; i++) {
+            externalIdJson.append("{\"identifier\":\"").append(i).append("\"}");
+        }
+        externalIdJson.append("]}");
+        ExternalIdentifierList studyAListPage1 = mapper.readValue(
+                externalIdJson.toString(), ExternalIdentifierList.class);
+        when(mockGetExternalIdsInStudyA.execute())
+                .thenReturn(Response.success(studyAListPage1));
+        when(mockResearcherApi.getExternalIdsForStudy(
+                eq("A"), anyInt(), eq(0), any()))
+                .thenReturn(mockGetExternalIdsInStudyA);
+
+        ExternalIdentifierList studyAListPage2 = mapper.readValue(
+                "{\"items\":[{\"identifier\":\"100\"}]}", ExternalIdentifierList.class);
+        when(mockResearcherApi.getExternalIdsForStudy(
+                eq("A"), anyInt(), eq(100), any()))
+                .thenReturn(mockGetExternalIdsInStudyA);
     }
 
     @Test
@@ -410,6 +462,20 @@ public class BridgeJavaSdkUtilTests extends Mockito {
         assertEquals("test_user", signUp.getDataGroups().get(0));
         assertEquals("d1a5cbaf-288c-48dd-9d4a-98c90213ac01", signUp.getPassword());
         assertNotNull(signUp.getAttributes());
+    }
+
+    @Test
+    public void test_getAllUsers() {
+
+    }
+
+    @Test
+    public void test_getParticipantReportClientDataString() throws IOException {
+        String data = BridgeJavaSdkUtil.getParticipantReportClientDataString(
+                "UserId", "ReportId");
+        verify(mockGetUsersParticipantReportRecordsV4).execute();
+        assertNotNull(data);
+        assertEquals("abcdefg", data);
     }
 
     public static HmDataModel.HmUser createExistingUser() {

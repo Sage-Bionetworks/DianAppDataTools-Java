@@ -103,16 +103,6 @@ public class DataMigration {
 
         System.out.println("Completed data migration successfully");
     }
-
-    private static void runManualAccountMigration(String[] args) throws IOException {
-        if (args.length < 4) {
-            throw new IllegalStateException("Please provide valid parameters in the form of:\n" +
-                    "java -jar NewArcIDs.jar BRIDGE_EMAIL BRIDGE_PASSWORD BRIDGE_ID DEVICE_ID_TO_MIGRATE");
-        }
-
-        BridgeJavaSdkUtil.initialize(args[0], args[1], args[2]);
-        BridgeJavaSdkUtil.manuallyMigrateUser(args[3]);
-    }
 }
 
 
