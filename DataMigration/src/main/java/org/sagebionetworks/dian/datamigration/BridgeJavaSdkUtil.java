@@ -35,7 +35,7 @@ public class BridgeJavaSdkUtil {
     private static String BRIDGE_ID = System.getenv("BR_ID");
 
     // User attribute keys
-    private static final String ATTRIBUTE_ARC_ID = "ARC_ID";
+    public static final String ATTRIBUTE_ARC_ID = "ARC_ID";
     private static final String ATTRIBUTE_RATER_EMAIL = "RATER_EMAIL";
     private static final String ATTRIBUTE_SITE_NOTES = "SITE_NOTES";
     private static final String ATTRIBUTE_VERIFICATION_CODE = "VERIFICATION_CODE";

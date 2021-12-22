@@ -65,13 +65,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import okhttp3.Request;
 import retrofit2.Call;
+import retrofit2.Callback;
 import retrofit2.Response;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.sagebionetworks.dian.datamigration.BridgeJavaSdkUtil.*;
 
@@ -133,7 +136,18 @@ public class BridgeJavaSdkUtilTests extends Mockito {
     private Call<ForwardCursorReportDataList> mockGetUsersParticipantReportRecordsV4;
 
     @Mock
-    private Call<ExternalIdentifierList> mockGetExternalIdsInStudyA;
+    private Call<ExternalIdentifierList> mockGetExternalIdsInStudyAPage1;
+
+    @Mock
+    private Call<ExternalIdentifierList> mockGetExternalIdsInStudyAPage2;
+
+    @Mock
+    private Call<ExternalIdentifierList> mockGetExternalIdsInStudyBPage1;
+
+    @Mock
+    private Call<Message> updateParticipant;
+
+    private List<MockCall> mockParticipantCalls;
 
     @Before
     public void before() throws IOException {
@@ -193,13 +207,20 @@ public class BridgeJavaSdkUtilTests extends Mockito {
 
         // Work-around for BridgeJavaSdk not exposing user ID
         StudyParticipant migratedParticipant = mapper
-                .readValue("{\"id\":\"abc123\"}", StudyParticipant.class);
+                .readValue("{\"id\":\"abc123\", \"studyIds\":[\"Sage\"]}", StudyParticipant.class);
         Map<String, String> migratedAttributes = new HashMap<>();
         migratedAttributes.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_TRUE);
+        migratedAttributes.put(ATTRIBUTE_ARC_ID, "000000");
         migratedParticipant.setAttributes(migratedAttributes);
         when(mockGetExternalIdMigratedCall.execute())
                 .thenReturn(Response.success(migratedParticipant));
-        when(mockResearcherApi.getParticipantByExternalId(eq("d1a5cbaf-288c-48dd-9d4a-98c90213ac01"), eq(false)))
+        when(mockResearcherApi.getParticipantByExternalId(
+                eq("d1a5cbaf-288c-48dd-9d4a-98c90213ac01"), eq(false)))
+                .thenReturn(mockGetExternalIdMigratedCall);
+
+        // Manual Migration
+        when(mockResearcherApi.getParticipantByExternalId(
+                eq("abc123"), eq(false)))
                 .thenReturn(mockGetExternalIdMigratedCall);
 
         // Work-around for BridgeJavaSdk not exposing user ID
@@ -232,21 +253,65 @@ public class BridgeJavaSdkUtilTests extends Mockito {
         StringBuilder externalIdJson = new StringBuilder("{\"items\":[");
         for (int i = 0; i < 100; i++) {
             externalIdJson.append("{\"identifier\":\"").append(i).append("\"}");
+            if (i < 99) {
+                externalIdJson.append(",");
+            }
         }
         externalIdJson.append("]}");
         ExternalIdentifierList studyAListPage1 = mapper.readValue(
                 externalIdJson.toString(), ExternalIdentifierList.class);
-        when(mockGetExternalIdsInStudyA.execute())
+        when(mockGetExternalIdsInStudyAPage1.execute())
                 .thenReturn(Response.success(studyAListPage1));
         when(mockResearcherApi.getExternalIdsForStudy(
-                eq("A"), anyInt(), eq(0), any()))
-                .thenReturn(mockGetExternalIdsInStudyA);
+                eq("A"), eq(0), eq(100), any()))
+                .thenReturn(mockGetExternalIdsInStudyAPage1);
 
         ExternalIdentifierList studyAListPage2 = mapper.readValue(
                 "{\"items\":[{\"identifier\":\"100\"}]}", ExternalIdentifierList.class);
+        when(mockGetExternalIdsInStudyAPage2.execute())
+                .thenReturn(Response.success(studyAListPage2));
         when(mockResearcherApi.getExternalIdsForStudy(
-                eq("A"), anyInt(), eq(100), any()))
-                .thenReturn(mockGetExternalIdsInStudyA);
+                eq("A"), eq(100), eq(100), any()))
+                .thenReturn(mockGetExternalIdsInStudyAPage2);
+
+        ExternalIdentifierList studyBListPage1 = mapper.readValue(
+                "{\"items\":[{\"identifier\":\"101\"}]}", ExternalIdentifierList.class);
+        when(mockGetExternalIdsInStudyBPage1.execute())
+                .thenReturn(Response.success(studyBListPage1));
+        when(mockResearcherApi.getExternalIdsForStudy(
+                eq("B"), eq(0), eq(100), any()))
+                .thenReturn(mockGetExternalIdsInStudyBPage1);
+
+        // Create all 101 get participant responses
+        mockParticipantCalls = new ArrayList<>();
+        for (int i = 0; i <= 101; i++) {
+            StudyParticipant participant = mapper
+                    .readValue("{\"id\":\"" + i + "\"}", StudyParticipant.class);
+            Map<String, String> attr = new HashMap<>();
+            String arcId = String.valueOf(i);
+            attr.put(ATTRIBUTE_ARC_ID, arcId);
+            participant.setAttributes(attr);
+            MockCall mockCall = new MockCall(participant);
+            mockParticipantCalls.add(mockCall);
+            when(mockResearcherApi.getParticipantByExternalId(eq(arcId), anyBoolean()))
+                    .thenReturn(mockCall);
+        }
+
+        // Manual Migration mocks
+        when(mockReportsApi.getUsersParticipantReportRecordsV4(
+                eq("abc123"), eq("Availability"), any(), any(), any(), anyInt()))
+                .thenReturn(mockGetUsersParticipantReportRecordsV4);
+        when(mockReportsApi.getUsersParticipantReportRecordsV4(
+                eq("abc123"), eq("TestSchedule"), any(), any(), any(), anyInt()))
+                .thenReturn(mockGetUsersParticipantReportRecordsV4);
+        when(mockReportsApi.getUsersParticipantReportRecordsV4(
+                eq("abc123"), eq("CompletedTests"), any(), any(), any(), anyInt()))
+                .thenReturn(mockGetUsersParticipantReportRecordsV4);
+
+        when(mockUpdateParticipantCall.execute())
+                .thenReturn(Response.success(new Message()));
+        when(mockResearcherApi.updateParticipant(eq("abc123"), any()))
+                .thenReturn(mockUpdateParticipantCall);
     }
 
     @Test
@@ -465,8 +530,27 @@ public class BridgeJavaSdkUtilTests extends Mockito {
     }
 
     @Test
-    public void test_getAllUsers() {
+    public void test_getAllUsers() throws IOException {
+        Map<String, List<String>> userMap = BridgeJavaSdkUtil.getAllUsers();
+        verify(mockGetAllStudies).execute();
+        verify(mockGetExternalIdsInStudyAPage1).execute();
+        verify(mockGetExternalIdsInStudyAPage2).execute();
+        verify(mockGetExternalIdsInStudyBPage1).execute();
+        for(MockCall call : mockParticipantCalls) {
+            assertEquals(1, call.executeCalledCount);
+        }
 
+        assertNotNull(userMap);
+        // 0-101 inclusively
+        assertEquals(102, userMap.keySet().size());
+        for (int i = 0; i <= 101; i++) {
+            String arcId = String.valueOf(i);
+            assertTrue("Arc ID is not contained " + arcId, userMap.containsKey(arcId));
+            List<String> externalIdList = userMap.get(arcId);
+            assertNotNull("Arc ID list null " + arcId, externalIdList);
+            assertEquals("Arc ID size not 1 " + arcId, 1, externalIdList.size());
+            assertEquals("Arc ID does not match" + arcId, arcId, externalIdList.get(0));
+        }
     }
 
     @Test
@@ -476,6 +560,17 @@ public class BridgeJavaSdkUtilTests extends Mockito {
         verify(mockGetUsersParticipantReportRecordsV4).execute();
         assertNotNull(data);
         assertEquals("abcdefg", data);
+    }
+
+    @Test
+    public void test_manualMigration() throws IOException {
+        BridgeJavaSdkUtil.manuallyMigrateUser("d1a5cbaf-288c-48dd-9d4a-98c90213ac01");
+        verify(mockGetExternalIdMigratedCall).execute();
+        verify(mockGetUsersParticipantReportRecordsV4, times(3)).execute();
+        verify(mockSignUpCall).execute();
+        verify(mockWakeSleepReportCall).execute();
+        verify(mockCompletedTestsReportCall).execute();
+        verify(mockTestSessionReportCall).execute();
     }
 
     public static HmDataModel.HmUser createExistingUser() {
@@ -520,4 +615,51 @@ public class BridgeJavaSdkUtilTests extends Mockito {
         data.arcId = arcId;
         return data;
     }
+
+    public class MockCall implements Call<StudyParticipant> {
+
+        StudyParticipant participant;
+        int executeCalledCount = 0;
+
+        public MockCall(StudyParticipant participant) {
+            this.participant = participant;
+        }
+
+        @Override
+        public Response<StudyParticipant> execute() throws IOException {
+            executeCalledCount += 1;
+            return Response.success(participant);
+        }
+
+        @Override
+        public void enqueue(Callback<StudyParticipant> callback) {
+
+        }
+
+        @Override
+        public boolean isExecuted() {
+            return false;
+        }
+
+        @Override
+        public void cancel() {
+
+        }
+
+        @Override
+        public boolean isCanceled() {
+            return false;
+        }
+
+        @Override
+        public Call<StudyParticipant> clone() {
+            return null;
+        }
+
+        @Override
+        public Request request() {
+            return null;
+        }
+    }
 }
+
