@@ -48,6 +48,8 @@ public class ReschedulingToolTests extends Mockito {
             resourceDirectory.resolve("TestSessionScheduleSeattle.json");
     private final Path testScheduleChicagoPath =
             resourceDirectory.resolve("TestSessionScheduleChicago.json");
+    private final Path testScheduleNoTimezonePath =
+            resourceDirectory.resolve("TestSessionScheduleNoTimezone.json");
 
     private final ZoneOffset zoneSeattle = ZoneOffset.ofHours(-8);
     private final ZoneOffset zoneStLouis = ZoneOffset.ofHours(-6);
@@ -72,7 +74,13 @@ public class ReschedulingToolTests extends Mockito {
     private Call<StudyParticipant> mockGetExternalIdMigratedCall;
 
     @Mock
+    private Call<StudyParticipant> mockGetExternalIdMigratedCall2;
+
+    @Mock
     private Call<ForwardCursorReportDataList> mockGetUsersParticipantReportRecordsV4;
+
+    @Mock
+    private Call<ForwardCursorReportDataList> mockGetUsersParticipantReport2RecordsV4;
 
     @Before
     public void before() throws IOException {
@@ -93,11 +101,10 @@ public class ReschedulingToolTests extends Mockito {
         String responseJson = "{\"items\":[{\"data\":\"" + reportDataStr + "\"}]}";
         ForwardCursorReportDataList reportResponse = mapper.readValue(
                 responseJson, ForwardCursorReportDataList.class);
-        List<ReportData> items = reportResponse.getItems();
         when(mockGetUsersParticipantReportRecordsV4.execute())
                 .thenReturn(Response.success(reportResponse));
         when(mockReportsApi.getUsersParticipantReportRecordsV4(
-                anyString(), any(), any(), any(), any(), anyInt()))
+                eq("abc123"), any(), any(), any(), any(), anyInt()))
                 .thenReturn(mockGetUsersParticipantReportRecordsV4);
 
         // Work-around for BridgeJavaSdk not exposing user ID
@@ -110,6 +117,28 @@ public class ReschedulingToolTests extends Mockito {
                 .thenReturn(Response.success(migratedParticipant));
         when(mockResearcherApi.getParticipantByExternalId(eq("000000"), eq(false)))
                 .thenReturn(mockGetExternalIdMigratedCall);
+
+        String reportDataStr2 = PathsHelper.readFile(testScheduleNoTimezonePath);
+        reportDataStr2 = reportDataStr2.replace("\"", "\\\"");
+        String responseJson2 = "{\"items\":[{\"data\":\"" + reportDataStr2 + "\"}]}";
+        ForwardCursorReportDataList reportResponse2 = mapper.readValue(
+                responseJson2, ForwardCursorReportDataList.class);
+        when(mockGetUsersParticipantReport2RecordsV4.execute())
+                .thenReturn(Response.success(reportResponse2));
+        when(mockReportsApi.getUsersParticipantReportRecordsV4(
+                eq("abc456"), any(), any(), any(), any(), anyInt()))
+                .thenReturn(mockGetUsersParticipantReport2RecordsV4);
+
+        StudyParticipant migratedParticipant2 = mapper
+                .readValue("{\"id\":\"abc456\"}", StudyParticipant.class);
+        Map<String, String> migratedAttributes2 = new HashMap<>();
+        migratedAttributes2.put(ATTRIBUTE_IS_MIGRATED, ATTRIBUTE_VALUE_TRUE);
+        migratedParticipant2.setAttributes(migratedAttributes2);
+        when(mockGetExternalIdMigratedCall2.execute())
+                .thenReturn(Response.success(migratedParticipant2));
+        when(mockResearcherApi.getParticipantByExternalId(eq("000001"), eq(false)))
+                .thenReturn(mockGetExternalIdMigratedCall2);
+
     }
 
     private TestSchedule createTestSchedule(Path path) throws IOException {
@@ -131,6 +160,35 @@ public class ReschedulingToolTests extends Mockito {
             ReschedulingTool.rescheduleUser(scanner);
             verify(mockGetExternalIdMigratedCall).execute();
             verify(mockGetUsersParticipantReportRecordsV4).execute();
+            verify(mockTestSessionReportCall).execute();
+
+        } finally {
+            if (in != null) {
+                in.close();
+            }
+            if (scanner != null) {
+                scanner.close();
+            }
+        }
+    }
+
+    @Test
+    public void test_rescheduleTestCycleNoTimezoneOffsetOrName() throws IOException {
+        // User 000000, Test cycle 1 starts at Fri Dec 03 2021 20:27:11 GMT-0800 (PST)
+        // Move this user from 12-3 to 12-4 (one day)
+        String userInput = "000001\n-8\nPacific Standard Time\n1\n2021-12-04\ny\nn";
+        InputStream in = null;
+        Scanner scanner = null;
+        try {
+            in = new ByteArrayInputStream(userInput.getBytes());
+            System.setIn(in);
+            scanner = new Scanner(System.in);
+
+            TestSchedule testSchedule = ReschedulingTool.rescheduleUser(scanner);
+            assertEquals("Pacific Standard Time", testSchedule.timezone_name);
+            assertEquals("-8", testSchedule.timezone_offset);
+            verify(mockGetExternalIdMigratedCall2).execute();
+            verify(mockGetUsersParticipantReport2RecordsV4).execute();
             verify(mockTestSessionReportCall).execute();
 
         } finally {

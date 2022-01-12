@@ -57,7 +57,7 @@ public class ReschedulingTool {
         ReschedulingTool.rescheduleUser(in);
     }
 
-    public static void rescheduleUser(Scanner in) throws IOException {
+    public static TestSchedule rescheduleUser(Scanner in) throws IOException {
         System.out.println("What is the Arc ID of the user you want to reschedule?");
         String arcId = in.nextLine();
 
@@ -74,6 +74,22 @@ public class ReschedulingTool {
 
         Map<Integer, List<TestSchedule.TestScheduleSession>> sessionsByCycle =
                 convertToMap(testSchedule.sessions);
+
+        // A user needs a time zone offset, if they are only missing timezone name, that is OK
+        if (testSchedule.timezone_offset == null) {
+            System.out.println("This participant's schedule data model has no timezone offset.  " +
+                    "We need a timezone offset to properly interpret the dates/times that are " +
+                    "listed in the schedule.  Please check this participant on " +
+                    "Bridge Study Manager in the \"Request Info\" tab to find their timezone.");
+            System.out.println("What is this participant\'s timezone offset? (i.e. -8)");
+            testSchedule.timezone_offset = in.nextLine();
+
+            if (testSchedule.timezone_name == null) {
+                System.out.println("This participant's schedule data model has no timezone name.");
+                System.out.println("What is this participant\'s timezone name? (i.e. Mountain Standard Time)");
+                testSchedule.timezone_name = in.nextLine();
+            }
+        }
 
         ZoneOffset userTimeZone = parseZone(testSchedule.timezone_offset);
 
@@ -159,6 +175,7 @@ public class ReschedulingTool {
         writeScheduleToBridge(participant.getId(), testSchedule);
 
         System.out.println("Re-scheduling was successful!");
+        return testSchedule;
     }
 
     /**
