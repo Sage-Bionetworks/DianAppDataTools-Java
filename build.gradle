@@ -6,6 +6,7 @@ buildscript {
         maven{ url 'https://sagebionetworks.jfrog.io/sagebionetworks/ext-releases-local' }
         maven{ url 'https://repo-maven.sagebridge.org/' }
         jcenter()
+        mavenCentral()
     }
     dependencies {
         classpath "com.android.tools.build:gradle:4.1.0"
@@ -22,6 +23,7 @@ allprojects {
         maven{ url 'https://sagebionetworks.jfrog.io/sagebionetworks/ext-releases-local' }
         maven{ url 'https://repo-maven.sagebridge.org/' }
         jcenter()
+        mavenCentral()
     }
 }
 

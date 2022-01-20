@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.dian.datamigration.BridgeJavaSdkUtil;
+import org.sagebionetworks.dian.datamigration.HmDataModel;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 /**
@@ -37,6 +40,23 @@ public class AdherenceTool {
         AdherenceCompletedTests completedTests = mapper.readValue(
                 completedTestJson, AdherenceCompletedTests.class);
 
+        Map<Integer, Integer> completionMap = new HashMap<>();
+        for (AdherenceCompletedTests.AdherenceCompletedTest test : completedTests.completed) {
+            int count = 0;
+            if (completionMap.get(test.week) != null) {
+                count = completionMap.get(test.week);
+            }
+            count += 1;
+            completionMap.put(test.week, count);
+        }
+
+        System.out.println("\n\n");
+        System.out.println("Completed Tests per week:");
+        for (Integer week : completionMap.keySet()) {
+            System.out.println("Week: " + week + "\nCompleted Count: " + completionMap.get(week) + "\n");
+        }
+
+        System.out.println("Raw JSON:");
         String prettyPrintedJson = mapper.writerWithDefaultPrettyPrinter()
                 .writeValueAsString(completedTests);
         System.out.println("\n" + prettyPrintedJson);
