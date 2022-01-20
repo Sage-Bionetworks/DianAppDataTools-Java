@@ -3,7 +3,7 @@ This repository contains code for mapping user data from periodic Happy Medium (
 
 # Project setup
 
-Before you can run the code, your environment must have the following environmental variables set first:
+Before you can run the DataMigration class code, your environment must have the following environmental variables set first:
 
 ## Required
 **BR_EMAIL** - Your email to sign into the Arc Validation or DIAN bridge project
@@ -46,6 +46,98 @@ docker login ghcr.io -u $your_git_username -p $your_git_personal_access_token
 docker pull ghcr.io/sage-bionetworks/diandatamigration:release-test1
 docker run -e BR_ID=$BR_ID -e BR_EMAIL=$BR_EMAIL -e BR_PW=$BR_PW -e SYN_PROJ_ID=$SYN_PROJ_ID -e SYN_PAT=$SYN_PAT ghcr.io/sage-bionetworks/diandatamigration:release-test1
 ```
+
+# Building and running the Tools
+There are some tools in this project that were created to assist project managers in setting up the studies, making changes to existing schedules, and monitoring participant adherence.  These are tasks needed before we migrate to Bridge 2.0 Researcher UI dashboard.
+
+To run a tool, right click the class in Android Studio and click "Run".
+
+To create a JAR of a particular tool to send out, change the app's build.graadle line 
+from:
+```
+attributes("Main-Class": "org.sagebionetworks.dian.datamigration.DataMigration")
+```
+to in the case of the add participant tool:
+```
+attributes("Main-Class": "org.sagebionetworks.dian.datamigration.tools.newparticipants.AddParticipantTool")
+```
+and then run:
+`./gradlew jar`
+
+Tools:
+1) AdherenceTool - This tool accepts an Arc ID as input, and outputs the number of tests completed per test cycle for that participant.  It also prints out the raw JSON of the CompletedTests report clientData.
+2) AddParticipantTool - This tool can add new participants to a study in the format needed to run on a DIAN ARC app.
+3) ManuallyMigrationTool - This tool manually migrates a participant, in the case of them deleting their app before they migrated using their HappyMedium DeviceID credential.
+
+# Troubleshooting Tool Errors
+While running the JARS below, if you receive these error codes, this is most likely what they mean...
+
+401 - There is most likely a problem with the bridge email and password you provided.  Make sure it is not a Synapse account, it needs to be a bridge account only, by creating a new user THROUGH the bridge API with email and password and NO synapse account linked.
+
+404 - The Arc ID or Device ID you provided is not correct, as this error designates the External ID could not be found in the Bridge project
+
+# AddParticipantTool
+
+This JAR can only be run with the proper arguments.  You must provide a researcher level bridge email, password, the bridge project ID, and the number of new ARC IDs to generate.
+
+From the command line, the commands will generate 5 new ARC IDs:
+cd path_to_jar
+java -jar NewArcIDs.jar a@b.com password dian_validation 5 random
+
+This will output something like this:
+845399    E&mjbn1vJ
+506358    iL1VU.YVS
+349888    Rd.7c2hVN
+643738    mSGz4Z!Hc
+415060    &LJB4cvB4
+
+At this point, the program will ask you if you "Would you like to automatically create these on Bridge? (y/n)"
+Type "y" and hit enter, if you want the program to do it for you.
+
+At this point, the program will ask you to "enter the study-id to add them to:" and you must provide a valid study-id from the bridge project for the program to complete. 
+
+When successful, the output will look something like this:
+Successfully created 845399
+Successfully created 506358
+Successfully created 349888
+Successfully created 643738
+Successfully created 415060
+
+It is a good idea to verify on Bridge Study Manager that the ARC IDs are created and the VERIFICATION_CODE is whats expected.
+
+If you want to create participants that are test_users, you can provide an additional parameter to the request like this:
+java -jar NewArcIDs.jar a@b.com password dian_validation 5 random test_user
+
+# Manual Account Migration
+
+This JAR can only be run with the proper arguments.  You must provide a researcher level bridge email, password, the bridge project ID, and the Device ID of the user.
+
+First, you must go to Bridge and search for the ARC_ID user profile attribute for the ARC ID you want to manually migrate.  That will return a external ID account that is the user's Device ID.  If there are multiple results that look like Device ID, use the one that was created most recently.
+
+From the command line, this will manually migrate:
+cd path_to_jar
+java -jar NewArcIDs.jar a@b.com password dian_validation device_id
+
+Successful output should look something like this:
+Downloading availability report...
+Downloading test schedule report...
+Downloading completing test report...
+Creating participant account on bridge 321657
+Writing availability report
+Writing test schedule report
+Writing completed tests report
+Setting Device ID account IS_MIGRATED set to true...
+**User successfully migrated**
+
+# AdherenceTool
+
+This JAR can only be run with the proper arguments.  You must provide a researcher level bridge email, password, the bridge project ID, and the Device ID of the user.
+
+From the command line, this will manually migrate:
+cd path_to_jar
+java -jar AdherenceTool.jar a@b.com password dian_validation
+
+The program will ask you which Arc ID you want to check on.  Provide the ARC ID, and you will see the info for that participant.  
 
 # User Migration Background Info
 To fully understand the migration process, there are a few terms that need described.
