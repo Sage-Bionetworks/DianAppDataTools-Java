@@ -129,6 +129,18 @@ Writing completed tests report
 Setting Device ID account IS_MIGRATED set to true...
 **User successfully migrated**
 
+# Rescheduling Tool
+
+This tool allows you to re-schedule a participant's test cycle to a different date without affecting the other test cycles in their schedule.
+
+From the command line, this will run the tool:
+cd path_to_jar
+java -jar ReschedulingTool.jar a@b.com password bridge_id
+
+The program output should walk you through everything, and no additional steps are required. 
+
+Note that a user must delete the app on their device and re-install and sign-in for the schedule changes to take effect.
+
 # AdherenceTool
 
 This JAR can only be run with the proper arguments.  You must provide a researcher level bridge email, password, the bridge project ID, and the Device ID of the user.
