@@ -1,4 +1,4 @@
-package org.sagebionetworks.dian.datamigration.adherence;
+package org.sagebionetworks.dian.datamigration.tools.adherence;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

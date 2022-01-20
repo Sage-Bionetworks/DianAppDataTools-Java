@@ -12,10 +12,9 @@ import org.sagebionetworks.bridge.rest.api.ParticipantReportsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
 import org.sagebionetworks.bridge.rest.model.ForwardCursorReportDataList;
 import org.sagebionetworks.bridge.rest.model.Message;
-import org.sagebionetworks.bridge.rest.model.ReportData;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
-import org.sagebionetworks.dian.datamigration.rescheduler.ReschedulingTool;
-import org.sagebionetworks.dian.datamigration.rescheduler.TestSchedule;
+import org.sagebionetworks.dian.datamigration.tools.rescheduler.ReschedulingTool;
+import org.sagebionetworks.dian.datamigration.tools.rescheduler.TestSchedule;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

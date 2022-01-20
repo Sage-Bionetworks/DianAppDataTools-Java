@@ -1,10 +1,9 @@
-package org.sagebionetworks.dian.datamigration.adherence;
+package org.sagebionetworks.dian.datamigration.tools.adherence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.dian.datamigration.BridgeJavaSdkUtil;
-import org.sagebionetworks.dian.datamigration.HmDataModel;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -22,6 +21,7 @@ public class AdherenceTool {
         BridgeJavaSdkUtil.initialize(args[0], args[1], args[2]);
         Scanner in = new Scanner(System.in);
         AdherenceTool.checkUser(in);
+        in.close();
     }
 
     public static void checkUser(Scanner in) throws IOException {

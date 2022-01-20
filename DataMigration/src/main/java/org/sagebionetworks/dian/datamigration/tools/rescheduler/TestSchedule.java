@@ -1,4 +1,4 @@
-package org.sagebionetworks.dian.datamigration.rescheduler;
+package org.sagebionetworks.dian.datamigration.tools.rescheduler;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

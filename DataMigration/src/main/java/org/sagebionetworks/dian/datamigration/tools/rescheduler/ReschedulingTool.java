@@ -1,9 +1,8 @@
-package org.sagebionetworks.dian.datamigration.rescheduler;
+package org.sagebionetworks.dian.datamigration.tools.rescheduler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
-import org.sagebionetworks.client.exceptions.SynapseException;
 import org.sagebionetworks.dian.datamigration.BridgeJavaSdkUtil;
 
 import java.io.IOException;
@@ -55,6 +54,7 @@ public class ReschedulingTool {
         BridgeJavaSdkUtil.initialize(args[0], args[1], args[2]);
         Scanner in = new Scanner(System.in);
         ReschedulingTool.rescheduleUser(in);
+        in.close();
     }
 
     public static TestSchedule rescheduleUser(Scanner in) throws IOException {
@@ -169,7 +169,6 @@ public class ReschedulingTool {
         }
 
         System.out.println("Great! Writing changes to Bridge...");
-        in.close();
 
         // Write the final schedule changes to bridge
         writeScheduleToBridge(participant.getId(), testSchedule);
