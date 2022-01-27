@@ -510,7 +510,8 @@ public class HmDataModel {
      * Stores the list of CompletedTests by a user
      */
     public static class CompletedTestList {
-        public CompletedTestList() {}
+        public CompletedTestList() {
+        }
 
         /**
          * @param testSessionList from the Synapse data.  These will have duplicates,
@@ -522,12 +523,12 @@ public class HmDataModel {
             completed = new ArrayList<>();
 
             // Loop through and add all unique, completed sessions
-            for (TestSession testSession: testSessionList) {
+            for (TestSession testSession : testSessionList) {
                 boolean unique = true;
                 if (testSession.finished_session != 1) {
                     unique = false; // skip unfinished schedules
                 }
-                for (CompletedTest completedTest: completed) {
+                for (CompletedTest completedTest : completed) {
                     if (completedTest.week == testSession.week &&
                             completedTest.day == testSession.day &&
                             completedTest.session == testSession.session) {
