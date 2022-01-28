@@ -122,7 +122,7 @@ public class AdherenceTool {
             adherenceTableRow.endDate = dtfOut.print(
                     new DateTime(last.session_date.longValue() * 1000L, DateTimeZone.UTC));
             String total = "$0.00";
-            if (cycle < earnings.cycles.size()) {
+            if ((cycle-1) < earnings.cycles.size()) {
                 total = earnings.cycles.get(cycle-1).total;
             }
             adherenceTableRow.earned = total;
