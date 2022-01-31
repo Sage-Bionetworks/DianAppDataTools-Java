@@ -75,6 +75,24 @@ public class AdherenceTool {
         completedTests.completed = earningsController
                 .filterAndConvertTests(completedTests.completed);
 
+        // Remove duplicate test
+        List<HmDataModel.CompletedTest> uniqueTestList = new ArrayList<>();
+        // Loop through and add all unique, completed sessions
+        for (HmDataModel.CompletedTest testToAdd : completedTests.completed) {
+            boolean unique = true;
+            for (HmDataModel.CompletedTest addedTest : uniqueTestList) {
+                if (addedTest.week == testToAdd.week &&
+                    addedTest.day == testToAdd.day &&
+                    addedTest.session == testToAdd.session) {
+                    unique = false;
+                }
+            }
+            if (unique) {
+                uniqueTestList.add(testToAdd);
+            }
+        }
+        completedTests.completed = uniqueTestList;
+
         // Calculate test completion percentage per cycle
         Map<Integer, Integer> completionMap = new HashMap<>();
         for (HmDataModel.CompletedTest test : completedTests.completed) {
