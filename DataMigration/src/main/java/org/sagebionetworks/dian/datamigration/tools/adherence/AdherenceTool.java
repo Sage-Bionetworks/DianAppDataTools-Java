@@ -104,8 +104,23 @@ public class AdherenceTool {
             completionMap.put(test.week, count);
         }
         List<Integer> completionKeyArray = new ArrayList<>();
-        for (Integer key : completionMap.keySet()) {
-            completionKeyArray.add(key);
+        int targetWeek = 0;
+        for (Integer cycle: sessionsByCycle.keySet()) {
+            int closestWeekDiff = 1000000;
+            int keyForClosestWeek = -1;
+            for (Integer key : completionMap.keySet()) {
+                int weekDiff = Math.abs(key - targetWeek);
+                if (weekDiff < closestWeekDiff) {
+                    closestWeekDiff = weekDiff;
+                    keyForClosestWeek = key;
+                }
+            }
+            if (keyForClosestWeek >= 0 && closestWeekDiff < 4) {
+                completionKeyArray.add(keyForClosestWeek);
+            } else {
+                completionKeyArray.add(targetWeek);
+            }
+            targetWeek += 26;
         }
 
         System.out.println("\nCycle   Start Date      End Date        Adherence   Earned");
@@ -117,7 +132,7 @@ public class AdherenceTool {
 
             int applicableSessionsCount = 0;
             for (TestSchedule.TestScheduleSession session : sessions) {
-                if (session.session_date < System.currentTimeMillis()) {
+                if (session.session_date < (System.currentTimeMillis() / 1000L)) {
                     // Ignore baseline session
                     if (!baselineSession.session_date.equals(session.session_date)) {
                         applicableSessionsCount += 1;
@@ -127,9 +142,12 @@ public class AdherenceTool {
             int percentage = 0;
             if (applicableSessionsCount > 0 &&
                     (cycle-1) < completionKeyArray.size()) {
-                int completedCount = completionMap.get(completionKeyArray.get(cycle-1));
-                percentage = (int)(100 *
-                        ((float)completedCount / (float)applicableSessionsCount));
+                int completionKeyVal = completionKeyArray.get(cycle-1);
+                if (completionMap.containsKey(completionKeyVal)) {
+                    int completedCount = completionMap.get(completionKeyVal);
+                    percentage = (int)(100 *
+                            ((float)completedCount / (float)applicableSessionsCount));
+                }
             }
             adherenceTableRow.adherence = String.format("%02d%%", percentage);
 
