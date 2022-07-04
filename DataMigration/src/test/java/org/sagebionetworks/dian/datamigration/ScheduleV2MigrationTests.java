@@ -32,12 +32,9 @@
 
 package org.sagebionetworks.dian.datamigration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 
 import org.joda.time.DateTime;
-import org.joda.time.LocalTime;
-import org.joda.time.format.DateTimeFormatter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -51,23 +48,21 @@ import org.sagebionetworks.dian.datamigration.tools.adherence.SageScheduleContro
 import org.sagebionetworks.dian.datamigration.tools.adherence.SageUserClientData;
 import org.sagebionetworks.dian.datamigration.tools.adherence.SageV1Schedule;
 import org.sagebionetworks.dian.datamigration.tools.adherence.SageV2Availability;
-import org.sagebionetworks.dian.datamigration.tools.rescheduler.TestSchedule;
-import org.sagebionetworks.dian.datamigration.tools.schedulev2.AdherenceToolV2;
+import org.sagebionetworks.dian.datamigration.tools.adherence.ScheduledSessionStart;
 import org.sagebionetworks.dian.datamigration.tools.schedulev2.ScheduleV2Migration;
-import org.sagebionetworks.dian.datamigration.tools.schedulev2.WakeSleepSchedule;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -186,9 +181,13 @@ public class ScheduleV2MigrationTests {
                     ScheduleV2Migration.createEarningsController(fileIdStr, v1Schedule, completedJson);
             assertNotNull(earningsController);
 
-            SageUserClientData clientData =
-                    ScheduleV2Migration.createUserClientData(
-                            fileIdStr, v2Availability, earningsController);
+            Gson gson = new Gson();
+            Timeline timeline = gson.fromJson(
+                    PathsHelper.readFile(scheduleV2Json), Timeline.class);
+            StudyActivityEventList eventList = createActivityEventList();
+
+            SageUserClientData clientData = ScheduleV2Migration.createUserClientData(
+                    timeline, v2Availability, earningsController);
             assertNotNull(clientData);
             assertNotNull(clientData.getAvailability());
             assertNotNull(clientData.getAvailability().getBed());
@@ -196,14 +195,22 @@ public class ScheduleV2MigrationTests {
             // Format HH:MM
             assertEquals(5, clientData.getAvailability().getWake().length());
             assertEquals(5, clientData.getAvailability().getBed().length());
+            // Check for migration status, should always be false in this scenario
+            assertNotNull(clientData.getHasMigratedToV2());
+            assertFalse(clientData.getHasMigratedToV2());
+            // Check for new session start times
+            assertNotNull(clientData.getSessionStartLocalTimes());
+            // Make sure all instance GUIDs are unique
+            HashSet<String> allGuids = new HashSet<>();
+            for (ScheduledSessionStart sessionStart : clientData.getSessionStartLocalTimes()) {
+                allGuids.add(sessionStart.getGuid());
+            }
+            assertEquals(280, clientData.getSessionStartLocalTimes().size());
+            assertEquals(280, allGuids.size());
 
             assertNotNull(clientData.getEarnings());
             assertTrue(clientData.getEarnings().size() > 0);
 
-            Gson gson = new Gson();
-            Timeline timeline = gson.fromJson(
-                    PathsHelper.readFile(scheduleV2Json), Timeline.class);
-            StudyActivityEventList eventList = createActivityEventList();
             List<AdherenceRecord> adherenceList = ScheduleV2Migration.createAdherenceRecords(
                     timeline, eventList, v1Schedule, earningsController);
 

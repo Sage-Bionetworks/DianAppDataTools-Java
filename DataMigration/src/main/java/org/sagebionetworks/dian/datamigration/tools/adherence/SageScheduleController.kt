@@ -1,14 +1,13 @@
 package org.sagebionetworks.dian.datamigration.tools.adherence
 
 import com.google.gson.Gson
+import com.google.gson.internal.LinkedTreeMap
 import org.joda.time.DateTime
 import org.joda.time.LocalTime
 import org.joda.time.Minutes
 import org.joda.time.Weeks
 import org.joda.time.format.DateTimeFormatterBuilder
-import org.sagebionetworks.bridge.rest.model.AdherenceRecord
-import org.sagebionetworks.bridge.rest.model.ScheduledSession
-import org.sagebionetworks.bridge.rest.model.StudyActivityEventList
+import org.sagebionetworks.bridge.rest.model.*
 import org.sagebionetworks.dian.datamigration.HmDataModel
 import org.sagebionetworks.dian.datamigration.tools.rescheduler.TestSchedule
 import org.sagebionetworks.dian.datamigration.tools.rescheduler.TestSchedule.TestScheduleSession
@@ -310,6 +309,41 @@ open class SageScheduleController {
             }
         }
     }
+
+    /**
+     * Create the availability time list for the entire user's scheduled sessions
+     * @param the full session list for the user's schedule
+     * @param availability the availability of the user for when they can do tests
+     * @return a list the new random start times for each session, except for the baseline session
+     */
+    open fun createAvailableTimeList(sessionList: List<ScheduledSession>,
+                                     availability: SageV2Availability): List<ScheduledSessionStart> {
+        // Ignore baseline group that only has one session in the list, this is not scheduled randomly
+        return organizeByDaySorted(sessionList).filter { it.size > 1 }.map {
+            val randomTimeList = availability.randomSessionTimeStrings()
+            return@map it.mapIndexed { i, session ->
+                return@mapIndexed ScheduledSessionStart(session.instanceGuid, randomTimeList[i])
+            }
+        }.flatten()
+    }
+
+    /**
+     * Organize the sessions into groups by day, there should be 4 sessions in each day,
+     * except for the baseline day, which should only have 1 session.
+     * @param full session schedule list
+     * @return a list of groups of schedules where the group is all in a day, and they are
+     *         sorted within that group by local start time
+     */
+    open fun organizeByDaySorted(sessionList: List<ScheduledSession>): List<List<ScheduledSession>> {
+        val sessionMap = mutableMapOf<Int, MutableList<ScheduledSession>>()
+        sessionList.forEach {
+            val mapIdx = ((studyBurstIndex(it.startEventId) + 1) * 7) + it.startDay
+            sessionMap[mapIdx]?.add(it) ?: run {
+                sessionMap[mapIdx] = mutableListOf(it)
+            }
+        }
+        return sessionMap.toSortedMap().map { it.value.sortedBy { it.startTime } }
+    }
 }
 
 data class SageV1StudyBurst(
@@ -357,6 +391,10 @@ data class SageV2Availability(
         val startOfDay = LocalTime(0, 0)
         val minimumAvailabilityInMinutes = 8 * 60 // 8 hours
 
+        fun convertToTimeStringList(localTimeList: List<LocalTime>): List<String> {
+            return localTimeList.map { formatter.print(it) }
+        }
+
         /**
          * Calculates the minutes between two local times in a way that supports
          * an overnight availability calculation.
@@ -388,6 +426,10 @@ data class SageV2Availability(
      */
     public fun availabilityInMinutes(): Int {
         return minutesBetween(wakeLocalTime(), bedLocalTime())
+    }
+
+    fun randomSessionTimeStrings(): List<String> {
+        return convertToTimeStringList(randomSessionTimes())
     }
 
     // In at least a span of 8 hours of availability,
@@ -429,12 +471,30 @@ data class SageV2Availability(
 }
 
 data class SageUserClientData(
-        /** Time window offsets **/
-        //var timeWindowOffsetList: LinkedTreeMap<String, String>?,
+        /** True if the user has download and run the V2 Sage app
+         * This will be set when the user logs in on the V2 app or
+         * when they upgrade the app and migrate from V1 to V2 scheduling **/
+        var hasMigratedToV2: Boolean?,
+        /** Due to the limitation with Bridge V2 scheduling, and implementing
+         * a Ecological momentary assessment (EMA) where the sessions are randomly
+         * spread out throughout an availability period during the day,
+         * we must store our own local times of day we should do each scheduled session **/
+        var sessionStartLocalTimes: List<ScheduledSessionStart>?,
         /** User availability **/
         var availability: SageV2Availability?,
         /** Earnings in $, element at index 0 is first study burst, etc **/
-        var earnings: List<String>?)
+        var earnings: List<String>?) {
+    companion object {
+        /** Helper function for java to have cleaner way to access this field */
+        fun hasMigrated(clientData: SageUserClientData?): Boolean {
+            return clientData?.hasMigratedToV2 ?: false
+        }
+        fun fromStudyParticipant(gson: Gson, participant: StudyParticipant): SageUserClientData? {
+            val clientDataObj = participant.clientData ?: run { return null }
+            return gson.fromJson(gson.toJson(clientDataObj), SageUserClientData::class.java)
+        }
+    }
+}
 
 open class SageEarningsControllerV2 : SageEarningsController() {
 
@@ -458,7 +518,18 @@ open class SageEarningsControllerV2 : SageEarningsController() {
     override fun arcStartDays(): HashMap<Int, Int> {
         return studyBurstStartDays
     }
+
+    override fun now(): DateTime {
+        // Move one study burst into the future to make sure we get all earnings
+        return super.now().plusWeeks(26)
+    }
 }
+
+public data class ScheduledSessionStart(
+        /** The instanceGuid of a ScheduledSession object */
+        val guid: String,
+        /** The LocalTime start time of the session, in format "HH:mm" */
+        val start: String)
 
 public data class CompletedTestV2(
         public val eventId: String? = null,

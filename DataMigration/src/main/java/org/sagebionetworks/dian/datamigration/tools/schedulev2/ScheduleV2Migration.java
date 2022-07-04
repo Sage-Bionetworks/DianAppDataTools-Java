@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 
 import org.joda.time.DateTime;
+import org.joda.time.LocalTime;
 import org.joda.time.Minutes;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
@@ -22,6 +23,7 @@ import org.sagebionetworks.dian.datamigration.tools.adherence.SageUserClientData
 import org.sagebionetworks.dian.datamigration.tools.adherence.SageV1Schedule;
 import org.sagebionetworks.dian.datamigration.tools.adherence.SageV1StudyBurst;
 import org.sagebionetworks.dian.datamigration.tools.adherence.SageV2Availability;
+import org.sagebionetworks.dian.datamigration.tools.adherence.ScheduledSessionStart;
 import org.sagebionetworks.dian.datamigration.tools.adherence.earnings.EarningDetails;
 import org.sagebionetworks.dian.datamigration.tools.rescheduler.TestSchedule;
 
@@ -55,28 +57,43 @@ public class ScheduleV2Migration {
             StudyParticipant p = BridgeJavaSdkUtil.getParticipantByExternalId(arcId);
 
             if (p.getStudyIds() == null || p.getStudyIds().isEmpty()) {
+                System.out.println(arcId + " has withdrawn");
                 continue; // user has withdrawn, no need to migrate
             }
 
             String uId = p.getId();
             String sId = p.getStudyIds().get(0);
 
+            // Check for a user that has already migrated to V2 and signed into the app
+            SageUserClientData clientData = SageUserClientData.Companion.fromStudyParticipant(gson, p);
+            if (SageUserClientData.Companion.hasMigrated(clientData)) {
+                System.out.println(arcId + " has already migrated to V2, leave their info alone");
+                continue;
+            }
+
             SageV1Schedule schedule = createV2Schedule(uId, sId);
             if (schedule == null) {
-                return;
+                System.out.println(arcId + " has no schedule");
+                continue;
             }
 
             SageV2Availability availability = createV2Availability(
                     uId, getAvailabilityJsonFromBridge(uId));
             if (availability == null) {
-                return;
+                System.out.println(arcId + " has no availability");
+                continue;
             }
+
+            System.out.println("Performing V2 migration on " + arcId);
 
             SageEarningsControllerV2 earningsController =
                     createEarningsController(uId, schedule, getCompletedTestsJsonFromBridge(uId));
 
-            updateUserClientData(uId, availability, earningsController);
-            updateAdherenceRecords(uId, sId, schedule, earningsController);
+            StudyActivityEventList eventList = BridgeJavaSdkUtil.getAllTimelineEvents(uId, sId);
+            Timeline timeline = BridgeJavaSdkUtil.getParticipantsTimeline(uId, sId);
+
+            updateUserClientData(timeline, uId, availability, earningsController);
+            updateAdherenceRecords(timeline, eventList, uId, sId, schedule, earningsController);
         }
     }
 
@@ -246,7 +263,8 @@ public class ScheduleV2Migration {
     }
 
     public static SageUserClientData createUserClientData(
-            String uId, SageV2Availability availability,
+            Timeline timeline,
+            SageV2Availability availability,
             SageEarningsControllerV2 earningsController) {
 
         EarningDetails earnings = earningsController.getCurrentEarningsDetails();
@@ -255,14 +273,19 @@ public class ScheduleV2Migration {
             earningsList.add(cycle.total);
         }
 
-        return new SageUserClientData(availability, earningsList);
+        List<ScheduledSessionStart> sessionStartList =
+                controller.createAvailableTimeList(timeline.getSchedule(), availability);
+
+        // If we are using this code to write their client data, they have not migrated yet
+        return new SageUserClientData(false, sessionStartList, availability, earningsList);
     }
 
     public static void updateUserClientData(
+            Timeline timeline,
             String uId, SageV2Availability availability,
             SageEarningsControllerV2 earningsController) throws IOException {
         SageUserClientData clientData =
-                createUserClientData(uId, availability, earningsController);
+                createUserClientData(timeline, availability, earningsController);
         JsonElement clientDataJson = new Gson().toJsonTree(clientData);
         BridgeJavaSdkUtil.updateParticipantClientData(uId, clientDataJson);
     }
@@ -308,11 +331,10 @@ public class ScheduleV2Migration {
     }
 
     public static void updateAdherenceRecords(
+            Timeline timeline, StudyActivityEventList eventList,
             String userId, String studyId, SageV1Schedule v1Schedule,
             SageEarningsControllerV2 earningsController) throws IOException {
 
-        StudyActivityEventList eventList = BridgeJavaSdkUtil.getAllTimelineEvents(userId, studyId);
-        Timeline timeline = BridgeJavaSdkUtil.getParticipantsTimeline(userId, studyId);
         List<AdherenceRecord> adherenceRecordList = createAdherenceRecords(
                 timeline, eventList, v1Schedule, earningsController);
 
