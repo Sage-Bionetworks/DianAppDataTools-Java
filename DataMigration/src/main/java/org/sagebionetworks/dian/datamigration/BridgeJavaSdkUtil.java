@@ -4,27 +4,49 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.internal.LinkedTreeMap;
 
+import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
+import org.json.JSONObject;
 import org.sagebionetworks.bridge.rest.ClientManager;
+import org.sagebionetworks.bridge.rest.api.AdherenceRecordsApi;
+import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.AuthenticationApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantReportsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
+import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
+import org.sagebionetworks.bridge.rest.api.StudyActivityEventsApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecordUpdates;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecordsSearch;
 import org.sagebionetworks.bridge.rest.model.ClientInfo;
 import org.sagebionetworks.bridge.rest.model.ExternalIdentifier;
 import org.sagebionetworks.bridge.rest.model.ReportData;
+import org.sagebionetworks.bridge.rest.model.Schedule2;
+import org.sagebionetworks.bridge.rest.model.ScheduledSession;
+import org.sagebionetworks.bridge.rest.model.SearchTermPredicate;
 import org.sagebionetworks.bridge.rest.model.SharingScope;
 import org.sagebionetworks.bridge.rest.model.SignIn;
 import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.bridge.rest.model.Study;
+import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
+import org.sagebionetworks.bridge.rest.model.StudyActivityEventRequest;
 import org.sagebionetworks.bridge.rest.model.StudyList;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
+import org.sagebionetworks.bridge.rest.model.Timeline;
+import org.sagebionetworks.dian.datamigration.tools.rescheduler.TestSchedule;
 
 import java.io.IOException;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -55,6 +77,7 @@ public class BridgeJavaSdkUtil {
     public static String AVAILABILITY_REPORT_ID = "Availability";
     public static String TEST_SCHEDULE_REPORT_ID = "TestSchedule";
     public static String COMPLETED_TESTS_REPORT_ID = "CompletedTests";
+    public static String EARNINGS_REPORT_ID = "Earnings";
 
     // Maximum character count for user attributes
     private static final int ATTRIBUTE_LENGTH_MAX = 255;
@@ -64,14 +87,26 @@ public class BridgeJavaSdkUtil {
     private static ForResearchersApi researcherApi;
     private static ParticipantReportsApi reportsApi;
     private static ParticipantsApi participantsApi;
+    private static StudyActivityEventsApi activityEventsApi;
+    private static AssessmentsApi assessmentsApi;
+    private static SchedulesV2Api scheduleApi;
+    private static AdherenceRecordsApi adherenceRecordsApi;
 
     @VisibleForTesting
     protected static void mockInitialize(ForResearchersApi mockResearcherApi,
                                          ParticipantReportsApi mockReportsApi,
-                                         ParticipantsApi mockParticipantsApi) {
+                                         ParticipantsApi mockParticipantsApi,
+                                         StudyActivityEventsApi mockActivityEventsApi,
+                                         AssessmentsApi mockAssessmentsApi,
+                                         SchedulesV2Api mockScheduleApi,
+                                         AdherenceRecordsApi mockAdherenceApi) {
         researcherApi = mockResearcherApi;
         reportsApi = mockReportsApi;
         participantsApi = mockParticipantsApi;
+        activityEventsApi = mockActivityEventsApi;
+        assessmentsApi = mockAssessmentsApi;
+        scheduleApi = mockScheduleApi;
+        adherenceRecordsApi = mockAdherenceApi;
     }
 
     /**
@@ -116,6 +151,10 @@ public class BridgeJavaSdkUtil {
         researcherApi = clientManager.getClient(ForResearchersApi.class);
         reportsApi = clientManager.getClient(ParticipantReportsApi.class);
         participantsApi = clientManager.getClient(ParticipantsApi .class);
+        activityEventsApi = clientManager.getClient(StudyActivityEventsApi.class);
+        assessmentsApi = clientManager.getClient(AssessmentsApi.class);
+        scheduleApi = clientManager.getClient(SchedulesV2Api.class);
+        adherenceRecordsApi = clientManager.getClient(AdherenceRecordsApi.class);
     }
 
     /**
@@ -157,7 +196,7 @@ public class BridgeJavaSdkUtil {
      * @throws IOException if something goes wrong
      */
     public static String getParticipantReportClientDataString(
-            String userId, String reportId) throws IOException {
+            String userId, String reportId, boolean isOptional) throws IOException {
 
         List<ReportData> reports = reportsApi.getUsersParticipantReportRecordsV4(
                 userId, reportId,
@@ -166,11 +205,24 @@ public class BridgeJavaSdkUtil {
                 null, 50).execute().body().getItems();
 
         if (reports.size() != 1) {
-            throw new IllegalStateException(reportId +
-                    " report query had none, or more than one result.");
+            if (isOptional) {
+                return null;
+            } else {
+                throw new IllegalStateException(reportId +
+                        " report query had none, or more than one result.");
+            }
         }
 
+        if (reports.get(0).getData() instanceof LinkedTreeMap) {
+            // Some users may have their data organized as a Map instead of a JSON String
+            return new Gson().toJson((LinkedTreeMap)reports.get(0).getData());
+        }
         return (String)reports.get(0).getData();
+    }
+
+    public static String getParticipantReportClientDataString(
+            String userId, String reportId) throws IOException {
+        return getParticipantReportClientDataString(userId, reportId, false);
     }
 
     public static StudyParticipant getParticipantByExternalId(String externalId) throws IOException {
@@ -221,6 +273,13 @@ public class BridgeJavaSdkUtil {
                 .attributes(migratedUserAttributes(user));
 
         participantsApi.updateParticipant(userId, newParticipant).execute();
+    }
+
+    public static void updateParticipantClientData(
+            String userId, JsonElement clientDataJson) throws IOException {
+        StudyParticipant participant = new StudyParticipant()
+                .clientData(clientDataJson);
+        participantsApi.updateParticipant(userId, participant).execute();
     }
 
     @VisibleForTesting
@@ -369,6 +428,9 @@ public class BridgeJavaSdkUtil {
         StudyParticipant participant =
                 researcherApi.getParticipantByExternalId(deviceId, false).execute().body();
 
+        System.out.println("Manually migrating Arc ID " +
+                participant.getAttributes().get(ATTRIBUTE_ARC_ID));
+
         System.out.println("Downloading availability report...");
         String availability = getParticipantReportClientDataString(
                 participant.getId(), AVAILABILITY_REPORT_ID);
@@ -377,7 +439,7 @@ public class BridgeJavaSdkUtil {
                 participant.getId(), TEST_SCHEDULE_REPORT_ID);
         System.out.println("Downloading completing test report...");
         String completedTests = getParticipantReportClientDataString(
-                participant.getId(), COMPLETED_TESTS_REPORT_ID);
+                participant.getId(), COMPLETED_TESTS_REPORT_ID, true);
 
         Map<String, String> migratedAttributes = new HashMap<>();
         for (String attrKey : participant.getAttributes().keySet()) {
@@ -416,9 +478,18 @@ public class BridgeJavaSdkUtil {
                 makeReportData(testSchedule)).execute();
 
         System.out.println("Writing completed tests report");
+        if (completedTests == null) {  // Empty completed list
+            completedTests = "{\"completed\":[]}";
+        }
         reportsApi.addParticipantReportRecordV4(userId, COMPLETED_TESTS_REPORT_ID,
                 makeReportData(completedTests)).execute();
 
+        markDeviceIdAccountAsMigrated(participant);
+
+        System.out.println("User successfully migrated");
+    }
+
+    public static void markDeviceIdAccountAsMigrated(StudyParticipant participant) throws IOException {
         System.out.println("Setting Device ID account IS_MIGRATED set to true...");
         Map<String, String> deviceIdAttributes = new HashMap<>();
         for (String key : participant.getAttributes().keySet()) {
@@ -431,8 +502,52 @@ public class BridgeJavaSdkUtil {
         StudyParticipant updatedDeviceIdParticipant = new StudyParticipant();
         updatedDeviceIdParticipant.setAttributes(deviceIdAttributes);
         researcherApi.updateParticipant(participant.getId(), updatedDeviceIdParticipant).execute();
+    }
 
-        System.out.println("User successfully migrated");
+    /**
+     * @return  All users in all studies that have a 6 digit ARC ID as their External ID
+     * @throws IOException if something goes wrong
+     */
+    public static HashSet<String> getAllUsersList() throws IOException {
+        HashSet<String> userSet = new HashSet<>();
+
+        System.out.println("Getting all users from Study IDs:");
+        List<Study> studyList = researcherApi.getStudies(
+                0, 50, false).execute().body().getItems();
+        for (Study study : studyList) {
+            userSet.addAll(getArcIdsInStudy(study.getIdentifier()));
+        }
+
+        return userSet;
+    }
+
+    /**
+     * @return All users in all studies that have a 6 digit ARC ID as their External ID
+     * @param studyId the study ID to search in
+     * @throws IOException if something goes wrong
+     */
+    public static HashSet<String> getArcIdsInStudy(String studyId) throws IOException {
+        HashSet<String> userSet = new HashSet<>();
+
+        System.out.println("Getting all users from Study ID " + studyId);
+
+        int offset = 0;
+        List<ExternalIdentifier> externalIdList;
+        do {
+            externalIdList =
+                    researcherApi.getExternalIdsForStudy(
+                                    studyId, offset, 100, null)
+                            .execute().body().getItems();
+
+            for (ExternalIdentifier identifier : externalIdList) {
+                if (identifier.getIdentifier().length() == 6) {
+                    userSet.add(identifier.getIdentifier());
+                }
+            }
+            offset += 100;
+        } while(externalIdList.size() >= 100);
+
+        return userSet;
     }
 
     /**
@@ -471,5 +586,42 @@ public class BridgeJavaSdkUtil {
         }
 
         return userMap;
+    }
+
+    public static Timeline getParticipantsTimeline(String userId, String studyId) throws IOException {
+        return scheduleApi.getStudyParticipantTimeline(studyId, userId).execute().body();
+    }
+
+    public static void uploadAdherence(String studyId, String userId, ScheduledSession session) {
+        AdherenceRecordUpdates adherence = new AdherenceRecordUpdates();
+        adherenceRecordsApi.updateStudyParticipantAdherenceRecords(studyId, userId, adherence);
+    }
+
+    public static StudyActivityEventList getAllTimelineEvents(String userId, String studyId) throws IOException {
+        return activityEventsApi.getStudyParticipantStudyActivityEvents(studyId, userId).execute().body();
+    }
+
+
+    public static void updateStudyBurst(String userId, String studyId, String eventId,
+                                        DateTime dateTime, String timezone) throws IOException {
+        StudyActivityEventRequest request = new StudyActivityEventRequest();
+        request.setEventId(eventId);
+        request.setTimestamp(dateTime);
+        request.setClientTimeZone(timezone);
+        activityEventsApi.createStudyParticipantStudyActivityEvent(studyId, userId, request).execute();
+    }
+
+    public static void updateAdherence(String userId, String studyId, List<AdherenceRecord> records) throws IOException {
+        AdherenceRecordUpdates adherenceUpdate = new AdherenceRecordUpdates();
+        adherenceUpdate.setRecords(records);
+        adherenceRecordsApi.updateStudyParticipantAdherenceRecords(
+                studyId, userId, adherenceUpdate).execute();
+    }
+
+    public static AdherenceRecordList getUserAdherenceRecords(String userId, String studyId) throws IOException {
+        AdherenceRecordsSearch search = new AdherenceRecordsSearch();
+        search.setPageSize(500);  // This should always include the entire adherence record list
+        return adherenceRecordsApi.searchForStudyParticipantAdherenceRecords(
+                studyId, userId, search).execute().body();
     }
 }

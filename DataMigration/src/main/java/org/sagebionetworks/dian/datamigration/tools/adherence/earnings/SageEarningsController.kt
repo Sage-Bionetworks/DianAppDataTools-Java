@@ -42,6 +42,7 @@ import java.util.*
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 open class SageEarningsController {
 
@@ -69,16 +70,26 @@ open class SageEarningsController {
     private var studySummary: StudySummary? = null
 
     open var studyStartDate: DateTime? = null
+    open var baselineTestComplete: CompletedTest? = null
 
     open fun now(): DateTime {
         return DateTime.now()
     }
 
-    @Suppress("UNREACHABLE_CODE")
+    /**
+     * The keys are the study burst index (0 = 1st study burst, 9 = 10th study burst)
+     * The value is the days since start that the study burst is currently set to
+     */
     open fun arcStartDays(): HashMap<Int, Int> {
         throw IllegalArgumentException("Must be implemented by sub-class")
         return hashMapOf()
     }
+
+    /**
+     * Alternative arc start days, allow you to provide a back-up set of arcStartDays,
+     * that takes major re-scheduling into consideration.
+     */
+    var alternativeArcStartDays = hashMapOf<Int, Int>()
 
     open fun getCurrentEarningsOverview(): EarningOverview? {
         possibleRecalculateEarnings()
@@ -134,17 +145,36 @@ open class SageEarningsController {
         // If a week number is less than or equal to two weeks away, we snap to it
         val minAcceptableDistance = 2
         val expectedWeeks = arcStartDays().values.map { it / 7 }
-        val converted = tests.map { test ->
+        val backupWeeks = alternativeArcStartDays.values.map { it / 7 }
+        val converted = mutableListOf<CompletedTest>()
+        tests.forEach { test ->
             var newWeek = test.week
+            // Shift a test closer to the expected week
             if (!expectedWeeks.contains(test.week)) {
-                expectedWeeks.forEach { weekNum ->
+                expectedWeeks.forEachIndexed { index, weekNum ->
                     if (abs(test.week - weekNum) <= minAcceptableDistance) {
                         newWeek = weekNum
+                    } else if (index < backupWeeks.size) { // Check backups?
+                        val backUpWeekNum = backupWeeks[index]
+                        if (abs(test.week - backUpWeekNum) <= minAcceptableDistance) {
+                            newWeek = weekNum  // Use expected ARC week, but include this test
+                        }
                     }
                 }
             }
-            return@map CompletedTest(newWeek, test.day, test.session, test.completedOn)
+            // Only add this test if it is not a duplicate
+            if (!converted.any {
+                it.week == test.week &&
+                it.day == test.day &&
+                it.session == test.session }) {
+                converted.add(CompletedTest(
+                        newWeek, test.day, test.session, test.completedOn))
+            }
         }
+        // Store baseline test separately
+        baselineTestComplete = converted.firstOrNull {
+            it.week ==0 && it.day == 0 && it.session == 0 }
+        // Filter out baseline test, it should not be included in earnings
         return converted.filter { it.week != 0 || it.day != 0 }
     }
 
@@ -224,7 +254,7 @@ open class SageEarningsController {
         val targetCompleteCount = 28 // 7 days with 4 sessions a day
         val name = TEST_SESSION
         val value = allSessionEarning
-        val progress = 100 * (completedCount.toFloat() / targetCompleteCount.toFloat()).toInt()
+        val progress = (100 * (completedCount.toFloat() / targetCompleteCount.toFloat())).roundToInt()
         val progressComponents: List<Int> = listOf(completedCount)
         val amountEarned = "$1?"  // not sure what this is?
         val isComplete = false // this is not really a completable goal, always make it false
@@ -467,12 +497,14 @@ open class SageEarningsController {
                 val goals = periodGoals.filter { it.goal.name == name }
                 val completed = goals.filter { it.goal.completed == true }.size
                 val amountEarned = goals.map { it.earnings }.sum()
+                val progress = goals.map { it.goal.progress }.average().toInt()
                 val amountEarnedStr = String.format("$%.2f", amountEarned)
                 val cycleGoal = EarningDetails.Goal()
                 cycleGoal.name = name
                 cycleGoal.value = value
                 cycleGoal.count_completed = completed
                 cycleGoal.amount_earned = amountEarnedStr
+                cycleGoal.progress = progress
                 return@map cycleGoal
             }
 

@@ -33,6 +33,7 @@ public class EarningDetails {
         public String value;
         public Integer count_completed;
         public String amount_earned;
+        public Integer progress;
     }
 
 }

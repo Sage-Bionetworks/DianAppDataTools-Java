@@ -31,16 +31,23 @@
  */
 package org.sagebionetworks.research.sagearc
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import junit.framework.Assert.*
 import org.joda.time.DateTime
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import org.sagebionetworks.dian.datamigration.HmDataModel.*
+import org.sagebionetworks.dian.datamigration.PathsHelper
 import org.sagebionetworks.dian.datamigration.tools.adherence.earnings.EarningOverview.*
+import java.nio.file.Paths
 
 @RunWith(JUnit4::class)
 public class SageEarningsControllerTests {
+
+    private val resourceDirectory = Paths.get("src", "test", "resources")
+    private val testsFolder = resourceDirectory.resolve("earningsTests")
+    private val shiftedScheduleTestFile = testsFolder.resolve("earningsTest1.json")
 
     val controller = MockSageEarningsController()
 
@@ -66,6 +73,42 @@ public class SageEarningsControllerTests {
 
     fun studyPeriod2End(): DateTime {
         return studyPeriod1Start().plusDays(182 + 7)
+    }
+
+    @Test
+    fun testShiftedSchedule() {
+        // If a participant has their study burst start dates shifted,
+        // we need to support this in calculating the earnings
+        val completedTestsJson = PathsHelper.readFile(shiftedScheduleTestFile)
+        val completedTestModel = ObjectMapper().readValue(
+                completedTestsJson, CompletedTestList::class.java)
+
+        val studyStart = DateTime(1593267663000L).minusDays(1)
+        controller.studyStartDate = studyStart // First completed test
+        val afterCycle4 = DateTime(1646707764000L) // After cycle 4
+        controller.overridingNow = afterCycle4
+        val previousThirdCycleStart = controller.studyBurstDays.get(3)!!
+        // Set a custom third cycle start date based on the user's schedule
+        controller.studyBurstDays.put(3, 616);
+
+        controller.completedTests = completedTestModel.completed
+
+        // Let's make sure all 4 study burst earnings are represented and they have the correct earning
+        val earnings = controller.getCurrentEarningsDetails()
+        assertNotNull(earnings)
+        assertEquals(4, earnings!!.cycles.size)
+
+        assertEquals("$5.50", earnings!!.cycles.get(0).total)
+        assertEquals(0, earnings!!.cycles.get(0).cycle)
+        assertEquals("$25.50", earnings!!.cycles.get(1).total)
+        assertEquals(1, earnings!!.cycles.get(1).cycle)
+        assertEquals("$24.00", earnings!!.cycles.get(2).total)
+        assertEquals(2, earnings!!.cycles.get(2).cycle)
+
+        assertEquals("$29.00", earnings!!.cycles.get(3).total)
+        assertEquals(3, earnings!!.cycles.get(3).cycle)
+
+        controller.studyBurstDays.put(3, previousThirdCycleStart);
     }
 
     @Test
@@ -512,7 +555,7 @@ public class SageEarningsControllerTests {
 
         val twentyOneGoal = earnings?.goals?.firstOrNull{ it.name == TWENTY_ONE_SESSIONS }
         assertNotNull(twentyOneGoal)
-        assertEquals(twentyOneGoal?.progress_components, listOf(35))
+        assertEquals(twentyOneGoal?.progress_components, listOf(28))
         assertTrue(twentyOneGoal?.completed ?: false)
 
         val twoADayGoal = earnings?.goals?.firstOrNull{ it.name == TWO_A_DAY }
@@ -527,7 +570,7 @@ public class SageEarningsControllerTests {
 
         val allSessionsGoal = earnings?.goals?.firstOrNull{ it.name == TEST_SESSION }
         assertNotNull(allSessionsGoal)
-        assertEquals(allSessionsGoal?.progress_components, listOf(35))
+        assertEquals(allSessionsGoal?.progress_components, listOf(28))
 
         // 28 .testSession goals at it.50 each,
         // two a day goal at $6
@@ -543,7 +586,7 @@ public class SageEarningsControllerTests {
         // This is the raw completed tests, we don't filter them based on if they were "within"
         // a study period or not, but it should never really happen as participants can only
         // complete a test during a specific time window within the study period
-        assertEquals(summary?.tests_taken, 38)
+        assertEquals(summary?.tests_taken, 31)
         assertEquals(summary?.total_earnings, "$32.00")
 
         val details = controller.getCurrentEarningsDetails()
@@ -582,7 +625,7 @@ public class SageEarningsControllerTests {
 
         val twentyOneGoal = earnings?.goals?.firstOrNull{ it.name == TWENTY_ONE_SESSIONS }
         assertNotNull(twentyOneGoal)
-        assertEquals(twentyOneGoal?.progress_components, listOf(35))
+        assertEquals(twentyOneGoal?.progress_components, listOf(28))
         assertTrue(twentyOneGoal?.completed ?: false)
 
         val twoADayGoal = earnings?.goals?.firstOrNull{ it.name == TWO_A_DAY }
@@ -595,7 +638,7 @@ public class SageEarningsControllerTests {
 
         val allSessionsGoal = earnings?.goals?.firstOrNull{ it.name == TEST_SESSION }
         assertNotNull(allSessionsGoal)
-        assertEquals(allSessionsGoal?.progress_components, listOf(35))
+        assertEquals(allSessionsGoal?.progress_components, listOf(28))
 
         // 28 .testSession goals at it.50 each,
         // two a day goal at $6
@@ -611,7 +654,7 @@ public class SageEarningsControllerTests {
         // This is the raw completed tests, we don't filter them based on if they were "within"
         // a study period or not, but it should never really happen as participants can only
         // complete a test during a specific time window within the study period
-        assertEquals(summary?.tests_taken, 38)
+        assertEquals(summary?.tests_taken, 31)
         assertEquals(summary?.total_earnings, "$32.00")
 
         val details = controller.getCurrentEarningsDetails()
@@ -674,7 +717,7 @@ public class SageEarningsControllerTests {
         // This is the raw completed tests, we don't filter them based on if they were "within"
         // a study period or not, but it should never really happen as participants can only
         // complete a test during a specific time window within the study period
-        assertEquals(summary?.tests_taken, 38)
+        assertEquals(summary?.tests_taken, 31)
         assertEquals(summary?.total_earnings, "$32.00")
 
         val details = controller.getCurrentEarningsDetails()
@@ -1515,22 +1558,25 @@ open class MockSageEarningsController(): SageEarningsController() {
         this.studyStartDate = DateTime.parse("2021-08-10T11:21:00.000-07:00")
     }
 
-    override fun arcStartDays(): HashMap<Int, Int> {
-        val days: java.util.HashMap<Int, Int> = object : java.util.HashMap<Int, Int>() {
-            init {
-                put(0, 0) // Test Cycle A
-                put(1, 182) // Test Cycle B
-                put(2, 182 * 2) // Test Cycle C
-                put(3, 182 * 3) // Test Cycle D
-                put(4, 182 * 4) // Test Cycle E
-                put(5, 182 * 5) // Test Cycle F
-                put(6, 182 * 6) // Test Cycle G
-                put(7, 182 * 7) // Test Cycle H
-                put(8, 182 * 8) // Test Cycle I
-                put(9, 182 * 9) // Test Cycle I
-            }
+    val defaultStudyBurstDays: HashMap<Int, Int> = object : java.util.HashMap<Int, Int>() {
+        init {
+            put(0, 0) // Test Cycle A
+            put(1, 182) // Test Cycle B
+            put(2, 182 * 2) // Test Cycle C
+            put(3, 182 * 3) // Test Cycle D
+            put(4, 182 * 4) // Test Cycle E
+            put(5, 182 * 5) // Test Cycle F
+            put(6, 182 * 6) // Test Cycle G
+            put(7, 182 * 7) // Test Cycle H
+            put(8, 182 * 8) // Test Cycle I
+            put(9, 182 * 9) // Test Cycle I
         }
-        return days
+    }
+
+    var studyBurstDays = defaultStudyBurstDays
+
+    override fun arcStartDays(): HashMap<Int, Int> {
+        return studyBurstDays
     }
 
     public var overridingNow: DateTime = DateTime.now()

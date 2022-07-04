@@ -41,9 +41,13 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.sagebionetworks.bridge.rest.api.AdherenceRecordsApi;
+import org.sagebionetworks.bridge.rest.api.AssessmentsApi;
 import org.sagebionetworks.bridge.rest.api.ForResearchersApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantReportsApi;
 import org.sagebionetworks.bridge.rest.api.ParticipantsApi;
+import org.sagebionetworks.bridge.rest.api.SchedulesV2Api;
+import org.sagebionetworks.bridge.rest.api.StudyActivityEventsApi;
 import org.sagebionetworks.bridge.rest.exceptions.EntityNotFoundException;
 import org.sagebionetworks.bridge.rest.model.ExternalIdentifier;
 import org.sagebionetworks.bridge.rest.model.ExternalIdentifierList;
@@ -100,6 +104,18 @@ public class BridgeJavaSdkUtilTests extends Mockito {
     private ParticipantsApi mockParticipantsApi;
 
     @Mock
+    private SchedulesV2Api mockScheduleApi;
+
+    @Mock
+    private AdherenceRecordsApi mockAdherenceRecordsApi;
+
+    @Mock
+    private StudyActivityEventsApi mockStudyActivityEventsApi;
+
+    @Mock
+    private AssessmentsApi mockAssessmentsApi;
+
+    @Mock
     private Call<Message> mockTestSessionReportCall;
 
     @Mock
@@ -153,7 +169,10 @@ public class BridgeJavaSdkUtilTests extends Mockito {
     public void before() throws IOException {
         MockitoAnnotations.initMocks(this);
 
-        BridgeJavaSdkUtil.mockInitialize(mockResearcherApi, mockReportsApi, mockParticipantsApi);
+        BridgeJavaSdkUtil.mockInitialize(
+                mockResearcherApi, mockReportsApi, mockParticipantsApi,
+                mockStudyActivityEventsApi, mockAssessmentsApi,
+                mockScheduleApi, mockAdherenceRecordsApi);
 
         when(mockTestSessionReportCall.execute())
                 .thenReturn(Response.success(new Message()));
