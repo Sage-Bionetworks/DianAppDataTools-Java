@@ -57,8 +57,9 @@ open class SageScheduleController {
         val sessionsInADay = 4
 
         // Activity Event names
-        const val ACTIVITY_EVENT_CREATE_SCHEDULE = "timeline_retrieved"
-        const val ACTIVITY_EVENT_STUDY_BURST_FORMAT = "study_burst:" + ACTIVITY_EVENT_CREATE_SCHEDULE + "_burst:%02d"
+        const val ACTIVITY_EVENT_CREATE_SCHEDULE = "create_schedule"
+        const val ACTIVITY_EVENT_STUDY_BURST_FORMAT =
+                "study_burst:custom_" + ACTIVITY_EVENT_CREATE_SCHEDULE + "_burst:%02d"
         fun studyBurstActivityEventId(burstIdx: Int): String {
             return String.format(ACTIVITY_EVENT_STUDY_BURST_FORMAT, burstIdx)
         }
@@ -191,9 +192,11 @@ open class SageScheduleController {
         if (index < 0) {
             // Baseline test is not a part of the study bursts
             // It is also tracked differently in the earnings controller,
-            // as it does not earn the user money
-            return CompletedTestV2.createFrom(session.startEventId,
-                    earningsController.baselineTestComplete)
+            // as it does not earn the user money.
+            // Let's skip it, as we don't need this tracked at all
+            //return CompletedTestV2.createFrom(session.startEventId,
+                    // earningsController.baselineTestComplete)
+            return null
         }
 
         val studyBurstWeekNum = (earningsController.arcStartDays()[index] ?: 0) / 7
@@ -289,14 +292,23 @@ open class SageScheduleController {
 
         val gson = Gson()
         val adherenceCompleteTestList = adherence.map {
-            gson.fromJson(gson.toJson(it.clientData), HmDataModel.CompletedTest::class.java)
+            var completed = gson.fromJson(gson.toJson(it.clientData),
+                    HmDataModel.CompletedTest::class.java)
+            // To make V2 of the earnings controller more simple and get rid of the
+            // the odd first study burst day offset, let's move all week 0 session a day backwards
+            // so that they match the rest of the study bursts, and have day as 0 for the first day.
+            // This code reverses that functionality, so we match up the completed tests properly
+            if ((completed.week == 0 || completed.week == 1) && completed.day >= 0) {
+                completed.day = completed.day + 1
+            }
+            return@map completed
         }
         if (adherenceCompleteTestList.size < completedList.size) {
             return completedList.filter {
                 !adherenceCompleteTestList.any { it2 ->
                     it.week == it2.week &&
-                            it.day == it2.day &&
-                            it.session == it2.session
+                    it.day == it2.day &&
+                    it.session == it2.session
                 }
             }
         } else {

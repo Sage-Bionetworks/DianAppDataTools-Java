@@ -592,11 +592,6 @@ public class BridgeJavaSdkUtil {
         return scheduleApi.getStudyParticipantTimeline(studyId, userId).execute().body();
     }
 
-    public static void uploadAdherence(String studyId, String userId, ScheduledSession session) {
-        AdherenceRecordUpdates adherence = new AdherenceRecordUpdates();
-        adherenceRecordsApi.updateStudyParticipantAdherenceRecords(studyId, userId, adherence);
-    }
-
     public static StudyActivityEventList getAllTimelineEvents(String userId, String studyId) throws IOException {
         return activityEventsApi.getStudyParticipantStudyActivityEvents(studyId, userId).execute().body();
     }

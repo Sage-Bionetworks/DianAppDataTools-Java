@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.Days;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
@@ -49,7 +50,11 @@ public class AdherenceToolV2 {
 
         System.out.println("Reading participant\'s completed tests...");
         String completedTestJson = BridgeJavaSdkUtil.getParticipantReportClientDataString(
-                participant.getId(), BridgeJavaSdkUtil.COMPLETED_TESTS_REPORT_ID);
+                participant.getId(), BridgeJavaSdkUtil.COMPLETED_TESTS_REPORT_ID, true);
+
+        if (completedTestJson == null) {
+            completedTestJson = "{\"completed\":[]}"; // empty completion list
+        }
         // Convert Test Schedule JSON String to the expected HM data model
         ObjectMapper mapper = new ObjectMapper();
         HmDataModel.CompletedTestList completedTests = mapper.readValue(
@@ -77,8 +82,13 @@ public class AdherenceToolV2 {
             AdherenceTableRow adherenceTableRow = new AdherenceTableRow();
 
             DateTime burstStart = new DateTime((long)(studyBurst.getStartDate() * 1000L), DateTimeZone.UTC);
+            DateTime burstEnd = burstStart.plusDays(7);
+            DateTime now = DateTime.now();
+
+            boolean isCurrentlyInStudyBurst = now.isAfter(burstStart) && now.isBefore(burstEnd);
+
             adherenceTableRow.startDate = dtfOut.print(burstStart);
-            adherenceTableRow.endDate = dtfOut.print(burstStart.plusDays(7));
+            adherenceTableRow.endDate = dtfOut.print(burstEnd);
             String total = "$0.00";
 
             adherenceTableRow.adherence = "00%";
@@ -88,7 +98,18 @@ public class AdherenceToolV2 {
                 total = studyBurstEarnings.total;
                 for (EarningDetails.Goal goal : studyBurstEarnings.details) {
                     if (goal.name.equals(TEST_SESSION)) {
-                        adherenceTableRow.adherence = String.format("%02d%%", goal.progress);
+                        int burstAdherence = goal.progress;
+                        if (isCurrentlyInStudyBurst) {
+                            // If we are mid burst, adjust the adherence % to be a percentage
+                            // of how many sessions the user has seen so far
+                            int count = sessionsThatCanBeDoneSoFar(studyBurst);
+                            int totalCount = (cycle == 0) ? 29 : 28;
+                            if (count > 0) {
+                                burstAdherence = (int)(burstAdherence *
+                                        ((double)totalCount / (double)count));
+                            }
+                        }
+                        adherenceTableRow.adherence = String.format("%02d%%", burstAdherence);
                     }
                 }
             }
@@ -97,6 +118,9 @@ public class AdherenceToolV2 {
             System.out.format("%2d      %s      %s      %s         %s",
                     cycle, adherenceTableRow.startDate, adherenceTableRow.endDate,
                     adherenceTableRow.adherence, adherenceTableRow.earned);
+            if (isCurrentlyInStudyBurst) {
+                System.out.print("   ** Testing now **");
+            }
             System.out.println();
         }
 
@@ -108,6 +132,18 @@ public class AdherenceToolV2 {
                     .writeValueAsString(completedTests);
             System.out.println("\n" + prettyPrintedJson);
         }
+    }
+
+    private static int sessionsThatCanBeDoneSoFar(SageV1StudyBurst burst) {
+        double now = ((double)System.currentTimeMillis() / 1000.0);
+        int count = 0;
+        for (int i = 0; i < burst.getSessions().size(); i++) {
+            if (now < burst.getSessions().get(i).session_date) {
+                return count;
+            }
+            count++;
+        }
+        return count;
     }
 
     public static class AdherenceTableRow {

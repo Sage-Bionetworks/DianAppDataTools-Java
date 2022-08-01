@@ -52,8 +52,9 @@ public class ScheduleV2Migration {
 
     public static void runV2Migration() throws IOException {
 
-        // gqrrjr is the ScheduleTemplate study, it is a test study for figuring out the V2 schedule
-        for (String arcId : BridgeJavaSdkUtil.getArcIdsInStudy("gqrrjr")) {
+        // wbfxxk is the ScheduleTemplate study, it is a test study for figuring out the V2 schedule
+        // Once we are ready to deploy this for all studies, use a curated list of all Study IDs
+        for (String arcId : BridgeJavaSdkUtil.getArcIdsInStudy("wbfxxk")) {
             StudyParticipant p = BridgeJavaSdkUtil.getParticipantByExternalId(arcId);
 
             if (p.getStudyIds() == null || p.getStudyIds().isEmpty()) {
@@ -95,70 +96,6 @@ public class ScheduleV2Migration {
             updateUserClientData(timeline, uId, availability, earningsController);
             updateAdherenceRecords(timeline, eventList, uId, sId, schedule, earningsController);
         }
-    }
-
-    public static void saveAllUserDataForUnitTests() throws IOException {
-//        for (int i = 0; i < arcAllIdList.length; i++) {
-//            String arcId = arcAllIdList[i];
-//            StudyParticipant p = BridgeJavaSdkUtil.getParticipantByExternalId(arcId);
-//            String uId = p.getId();
-//            String obfuscatedId = i + "";
-//            if (p.getStudyIds() == null ||
-//                    p.getStudyIds().isEmpty()) {
-//                continue;
-//            }
-//            if (p.getDataGroups() != null &&
-//                p.getDataGroups().contains("test_user")) {
-//                continue;
-//            }
-//            String sId = p.getStudyIds().get(0);
-//            String scheduleJson = getScheduleJsonFromBridge(uId);
-//            TestSchedule schedule = createHMSchedule(uId, scheduleJson);
-//            if (schedule == null) {
-//                continue;
-//            }
-//            schedule.device_id = obfuscatedId;
-//            if (schedule.device_info != null) {
-//                if (schedule.device_info.toLowerCase().contains("android")) {
-//                    schedule.device_info = "android";
-//                } else if (schedule.device_info.toLowerCase().contains("ios")) {
-//                    schedule.device_info = "ios";
-//                } else {
-//                    schedule.device_info = "";
-//                }
-//            }
-//            schedule.model_version = "";
-//            schedule.participant_id = obfuscatedId;
-//            schedule.timezone_offset = "";
-//
-//            String availabilityJson = getAvailabilityJsonFromBridge(uId);
-//            WakeSleepSchedule availability = createHMAvailability(uId, availabilityJson);
-//            if (availability == null) {
-//                continue;
-//            }
-//            availability.device_id = obfuscatedId;
-//            if (availability.device_info != null) {
-//                if (availability.device_info.toLowerCase().contains("android")) {
-//                    availability.device_info = "android";
-//                } else if (availability.device_info.toLowerCase().contains("ios")) {
-//                    availability.device_info = "ios";
-//                } else {
-//                    availability.device_info = "";
-//                }
-//            }
-//            availability.model_version = "";
-//            availability.participant_id = obfuscatedId;
-//            availability.timezone_offset = "";
-//
-//            writeScheduleJsonToFile(obfuscatedId, gson.toJson(schedule));
-//            writeAvailabilityFile(obfuscatedId, gson.toJson(availability));
-//
-//            String completedJson = getCompletedTestsJsonFromBridge(uId);
-//            if (completedJson == null) {
-//                completedJson = "{completed:[]}";  // no completed tests
-//            }
-//            writeCompletedTestsJsonToFile(obfuscatedId, completedJson);
-//        }
     }
 
     public static String getScheduleJsonFromBridge(String uId) throws IOException {
@@ -235,20 +172,32 @@ public class ScheduleV2Migration {
         SageV1Schedule v1Schedule = createV1Schedule(
                 uId, getScheduleJsonFromBridge(uId));
 
+        if (v1Schedule == null) {
+            return null;
+        }
+
         String iANATimezone = getTimezone(v1Schedule);
         for (int i = 0; i < v1Schedule.getStudyBursts().size(); i++) {
             SageV1StudyBurst studyBurst = v1Schedule.getStudyBursts().get(i);
+
+            // V1 HM scheduling had the practice (baseline) test included and set to
+            // the first study burst start date. This shifted all study bursts by 1 day.
+            // The new V2 Sage scheduling does not include the practice test, and so
+            // the study as a whole, and the first study burst schedule starts.
+            DateTime startDate = SageScheduleController.Companion
+                    .createDateTime(studyBurst.getStartDate()).plusDays(1);
+
             if (i == 0) {
                 // Make sure this is sent first to create the schedule at the correct study start date
                 BridgeJavaSdkUtil.updateStudyBurst(
                         uId, sId, SageScheduleController.ACTIVITY_EVENT_CREATE_SCHEDULE,
-                        SageScheduleController.Companion.createDateTime(studyBurst.getStartDate()),
+                        startDate,
                         iANATimezone);
             }
             BridgeJavaSdkUtil.updateStudyBurst(
                 // i+1 for burst index, as Bridge designates 01 as first, not 00
                 uId, sId, SageScheduleController.Companion.studyBurstActivityEventId(i+1),
-                SageScheduleController.Companion.createDateTime(studyBurst.getStartDate()),
+                    startDate,
                 iANATimezone);
         }
 
@@ -359,6 +308,13 @@ public class ScheduleV2Migration {
                     .findCompletedTest(session, allSessionsOfDay, earningsController);
             // Test was completed, make an adherence record for it
             if (completed != null) {
+                // To make V2 of the earnings controller more simple and get rid of the
+                // the odd first study burst day offset, let's move all week 0 session a day backwards
+                // so that they match the rest of the study bursts, and have day as 0 for the first day.
+                if ((completed.getWeek() == 0 || completed.getWeek() == 1) && completed.getDay() > 0) {
+                    completed = new CompletedTestV2(completed.getEventId(), completed.getWeek(),
+                            completed.getDay() - 1, completed.getSession(), completed.getCompletedOn());
+                }
                 adherenceRecordList.add(controller.createAdherenceRecord(session,
                         controller.eventTimestamp(session.getStartEventId(), eventList),
                         SageScheduleController.Companion.createDateTime(completed.getCompletedOn()),

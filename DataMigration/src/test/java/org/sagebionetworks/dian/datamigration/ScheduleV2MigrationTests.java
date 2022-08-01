@@ -228,15 +228,9 @@ public class ScheduleV2MigrationTests {
 
             List<HmDataModel.CompletedTest> diff = controller.diff(
                     earningsController.getCompletedTests(), adherenceList);
-            int diffSize = diff.size();
-            // Adherence records should include the baseline being complete, but
-            // the earnings controller stores it separately from completed tests.
-            if (earningsController.getBaselineTestComplete() != null) {
-                diffSize -= 1;
-            }
 
             // Make sure there is an adherence record for every completed test
-            assertEquals(0, diffSize);
+            assertEquals(0, diff.size());
         }
     }
 }
