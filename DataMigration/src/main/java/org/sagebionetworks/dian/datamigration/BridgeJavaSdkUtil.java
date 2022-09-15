@@ -588,6 +588,11 @@ public class BridgeJavaSdkUtil {
         return userMap;
     }
 
+    public static List<Study> getAllStudies() throws IOException {
+        return researcherApi.getStudies(
+                0, 50, false).execute().body().getItems();
+    }
+
     public static Timeline getParticipantsTimeline(String userId, String studyId) throws IOException {
         return scheduleApi.getStudyParticipantTimeline(studyId, userId).execute().body();
     }

@@ -8,10 +8,11 @@ import org.sagebionetworks.bridge.rest.model.SignUp;
 import org.sagebionetworks.client.exceptions.SynapseException;
 import org.sagebionetworks.dian.datamigration.BridgeJavaSdkUtil;
 import org.sagebionetworks.dian.datamigration.PasswordGenerator;
-import org.sagebionetworks.dian.datamigration.tools.rescheduler.ReschedulingTool;
+import org.sagebionetworks.dian.datamigration.tools.schedulev2.AdherenceToolV2;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -28,15 +29,28 @@ public class AddParticipantTool {
                     "java -jar progam_file.jar bridge_email bridge_pw bridge_project_id new_user_count\n" +
                     "Synapse-backed Bridge accounts are not supported at this time");
         }
+
         int newUserCount = Integer.parseInt(args[3]);
-        boolean testUsers = (args.length > 4 && args[4].equals("test_user"))
-                || (args.length > 5 && args[5].equals("test_user"));
-        boolean isRandom = (args.length > 4 && args[4].equals("random"))
-                || (args.length > 5 && args[5].equals("random"));
+
+        String randomStr = "random";
+        String testUserStr = "test_user";
+        List<String> argsList = Arrays.asList(args);
+
+        boolean testUsers = argsList.contains(testUserStr);
+        boolean isRandom = argsList.contains(randomStr);
+
+        String customPw = null;
+        String lastArg = argsList.get(argsList.size() - 1);
+        if (argsList.size() > 4 &&
+                !lastArg.equals(randomStr) &&
+                !lastArg.equals(testUserStr)) {
+            customPw = lastArg;
+        }
 
         Scanner scanner = new Scanner(System.in);
         addNewParticipant(scanner, args[0], args[1], args[2],
-                testUsers, newUserCount, isRandom);
+                testUsers, newUserCount, isRandom, customPw);
+
         scanner.close();
     }
 
@@ -50,13 +64,13 @@ public class AddParticipantTool {
     public static void addNewParticipant(Scanner scanner,
                                          String email, String pw, String bridgeId,
                                          boolean isTestUser, int newUserCount,
-                                         boolean isRandom) throws IOException {
+                                         boolean isRandom, String customPw) throws IOException {
 
         BridgeJavaSdkUtil.initialize(email, pw, bridgeId);
         Map<String, List<String>> arcIdMap = BridgeJavaSdkUtil.getAllUsers();
         LinkedTreeMap<String, String> newUserArcIdMap = new LinkedTreeMap<>();
 
-        List<String> allArcIds = createTotalArcIdList();
+        List<String> allArcIds = createTotalArcIdList(100000);
         if (isRandom) {
             Collections.shuffle(allArcIds);
         }
@@ -64,8 +78,12 @@ public class AddParticipantTool {
         int i = 0;
         while (newUserArcIdMap.keySet().size() < newUserCount) {
             String arcId = allArcIds.get(i);
+            String arcPw = PasswordGenerator.INSTANCE.nextPassword();
+            if (customPw != null && isTestUser) {
+                arcPw = customPw;
+            }
             if (!arcIdExists(arcId, arcIdMap)) {
-                newUserArcIdMap.put(arcId, PasswordGenerator.INSTANCE.nextPassword());
+                newUserArcIdMap.put(arcId, arcPw);
             }
             i++;
             if (i > TOTAL_ARC_ID_COUNT) {
@@ -79,7 +97,7 @@ public class AddParticipantTool {
         }
 
         System.out.println("Would you like to create these on Bridge? (y/n)");
-        if (!ReschedulingTool.shouldContinueYN(scanner)) {
+        if (!AdherenceToolV2.shouldContinueYN(scanner)) {
             System.exit(0);
         }
 
@@ -117,8 +135,16 @@ public class AddParticipantTool {
     }
 
     private static List<String> createTotalArcIdList() {
+        return createTotalArcIdList(0);
+    }
+
+    private static List<String> createTotalArcIdList(int startingNumber) {
+        if (startingNumber > TOTAL_ARC_ID_COUNT) {
+            throw new IllegalStateException("Starting ARC ID cannot" +
+                    " be greater than " + TOTAL_ARC_ID_COUNT);
+        }
         List<String> allArcIds = new ArrayList<>();
-        for (int i = 0; i < TOTAL_ARC_ID_COUNT; i++) {
+        for (int i = startingNumber; i < TOTAL_ARC_ID_COUNT; i++) {
             allArcIds.add(String.format("%06d", i));
         }
         return allArcIds;

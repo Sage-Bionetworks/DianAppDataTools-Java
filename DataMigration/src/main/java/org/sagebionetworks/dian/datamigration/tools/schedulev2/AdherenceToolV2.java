@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.joda.time.Days;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
@@ -15,12 +14,9 @@ import org.sagebionetworks.dian.datamigration.tools.adherence.SageScheduleContro
 import org.sagebionetworks.dian.datamigration.tools.adherence.SageV1Schedule;
 import org.sagebionetworks.dian.datamigration.tools.adherence.SageV1StudyBurst;
 import org.sagebionetworks.dian.datamigration.tools.adherence.earnings.EarningDetails;
-import org.sagebionetworks.dian.datamigration.tools.rescheduler.ReschedulingTool;
 import org.sagebionetworks.dian.datamigration.tools.rescheduler.TestSchedule;
-import org.sagebionetworks.research.sagearc.SageEarningsController;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Scanner;
 
 import static org.sagebionetworks.dian.datamigration.tools.adherence.earnings.EarningOverview.TEST_SESSION;
@@ -126,12 +122,26 @@ public class AdherenceToolV2 {
 
         Scanner scanner = new Scanner(System.in);
         System.out.println("\nWould you also like to see the RAW JSON?");
-        if (ReschedulingTool.shouldContinueYN(scanner)) {
+        if (AdherenceToolV2.shouldContinueYN(scanner)) {
             System.out.println("Raw JSON:");
             String prettyPrintedJson = mapper.writerWithDefaultPrettyPrinter()
                     .writeValueAsString(completedTests);
             System.out.println("\n" + prettyPrintedJson);
         }
+    }
+
+    /**
+     * @param scanner to get input from the user
+     * @return true if user answers "y", false if the user answers "n"
+     */
+    public static boolean shouldContinueYN(Scanner scanner) {
+        String yesNo = scanner.nextLine();
+        while (!yesNo.toLowerCase().equals("y") &&
+                !yesNo.toLowerCase().equals("n")) {
+            System.out.println("Please enter a valid response.  y or n.");
+            yesNo = scanner.nextLine();
+        }
+        return yesNo.toLowerCase().equals("y");
     }
 
     private static int sessionsThatCanBeDoneSoFar(SageV1StudyBurst burst) {

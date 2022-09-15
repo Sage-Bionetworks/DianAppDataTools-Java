@@ -32,15 +32,10 @@
 
 package org.sagebionetworks.dian.datamigration.tools.migration;
 
-import org.sagebionetworks.client.exceptions.SynapseException;
+import org.apache.commons.lang3.StringUtils;
 import org.sagebionetworks.dian.datamigration.BridgeJavaSdkUtil;
-import org.sagebionetworks.dian.datamigration.HmDataModel.HmUser;
-import org.sagebionetworks.dian.datamigration.HmDataModel.HmUserData;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * Main executable class for the data migration from HappyMedium to Sage Bionetworks
@@ -58,5 +53,6 @@ public class ManuallyMigrationTool {
         BridgeJavaSdkUtil.manuallyMigrateUser(args[3]);
     }
 }
+
 
 

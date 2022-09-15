@@ -10,6 +10,7 @@ import org.joda.time.Minutes;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
 import org.sagebionetworks.bridge.rest.model.ScheduledSession;
+import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Timeline;
@@ -32,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
@@ -52,49 +54,55 @@ public class ScheduleV2Migration {
 
     public static void runV2Migration() throws IOException {
 
-        // wbfxxk is the ScheduleTemplate study, it is a test study for figuring out the V2 schedule
-        // Once we are ready to deploy this for all studies, use a curated list of all Study IDs
-        for (String arcId : BridgeJavaSdkUtil.getArcIdsInStudy("wbfxxk")) {
-            StudyParticipant p = BridgeJavaSdkUtil.getParticipantByExternalId(arcId);
+        List<Study> studyList = BridgeJavaSdkUtil.getAllStudies();
+        for (Study study : studyList) {
+            String studyId = study.getIdentifier();
+            HashSet<String> arcIdList = BridgeJavaSdkUtil.getArcIdsInStudy(studyId);
 
-            if (p.getStudyIds() == null || p.getStudyIds().isEmpty()) {
-                System.out.println(arcId + " has withdrawn");
-                continue; // user has withdrawn, no need to migrate
+            // wbfxxk is the ScheduleTemplate study, it is a test study for figuring out the V2 schedule
+            // Once we are ready to deploy this for all studies, use a curated list of all Study IDs
+            for (String arcId : arcIdList) {
+                StudyParticipant p = BridgeJavaSdkUtil.getParticipantByExternalId(arcId);
+
+                if (p.getStudyIds() == null || p.getStudyIds().isEmpty()) {
+                    System.out.println(arcId + " has withdrawn");
+                    continue; // user has withdrawn, no need to migrate
+                }
+
+                String uId = p.getId();
+                String sId = p.getStudyIds().get(0);
+
+                // Check for a user that has already migrated to V2 and signed into the app
+                SageUserClientData clientData = SageUserClientData.Companion.fromStudyParticipant(gson, p);
+                if (SageUserClientData.Companion.hasMigrated(clientData)) {
+                    System.out.println(arcId + " has already migrated to V2, leave their info alone");
+                    continue;
+                }
+
+                SageV1Schedule schedule = createV2Schedule(uId, sId);
+                if (schedule == null) {
+                    System.out.println(arcId + " has no schedule");
+                    continue;
+                }
+
+                SageV2Availability availability = createV2Availability(
+                        uId, getAvailabilityJsonFromBridge(uId));
+                if (availability == null) {
+                    System.out.println(arcId + " has no availability");
+                    continue;
+                }
+
+                System.out.println("Performing V2 migration on " + arcId);
+
+                SageEarningsControllerV2 earningsController =
+                        createEarningsController(uId, schedule, getCompletedTestsJsonFromBridge(uId));
+
+                StudyActivityEventList eventList = BridgeJavaSdkUtil.getAllTimelineEvents(uId, sId);
+                Timeline timeline = BridgeJavaSdkUtil.getParticipantsTimeline(uId, sId);
+
+                updateUserClientData(timeline, uId, availability, earningsController);
+                updateAdherenceRecords(timeline, eventList, uId, sId, schedule, earningsController);
             }
-
-            String uId = p.getId();
-            String sId = p.getStudyIds().get(0);
-
-            // Check for a user that has already migrated to V2 and signed into the app
-            SageUserClientData clientData = SageUserClientData.Companion.fromStudyParticipant(gson, p);
-            if (SageUserClientData.Companion.hasMigrated(clientData)) {
-                System.out.println(arcId + " has already migrated to V2, leave their info alone");
-                continue;
-            }
-
-            SageV1Schedule schedule = createV2Schedule(uId, sId);
-            if (schedule == null) {
-                System.out.println(arcId + " has no schedule");
-                continue;
-            }
-
-            SageV2Availability availability = createV2Availability(
-                    uId, getAvailabilityJsonFromBridge(uId));
-            if (availability == null) {
-                System.out.println(arcId + " has no availability");
-                continue;
-            }
-
-            System.out.println("Performing V2 migration on " + arcId);
-
-            SageEarningsControllerV2 earningsController =
-                    createEarningsController(uId, schedule, getCompletedTestsJsonFromBridge(uId));
-
-            StudyActivityEventList eventList = BridgeJavaSdkUtil.getAllTimelineEvents(uId, sId);
-            Timeline timeline = BridgeJavaSdkUtil.getParticipantsTimeline(uId, sId);
-
-            updateUserClientData(timeline, uId, availability, earningsController);
-            updateAdherenceRecords(timeline, eventList, uId, sId, schedule, earningsController);
         }
     }
 
