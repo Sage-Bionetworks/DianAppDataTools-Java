@@ -1,0 +1,413 @@
+{
+  "completed" : [ {
+    "week" : 0,
+    "day" : 1,
+    "session" : 0,
+    "completedOn" : 1.593267663E9
+  }, {
+    "week" : 0,
+    "day" : 1,
+    "session" : 1,
+    "completedOn" : 1.593275729E9
+  }, {
+    "week" : 0,
+    "day" : 2,
+    "session" : 0,
+    "completedOn" : 1.593353657E9
+  }, {
+    "week" : 0,
+    "day" : 2,
+    "session" : 2,
+    "completedOn" : 1.593369855E9
+  }, {
+    "week" : 0,
+    "day" : 3,
+    "session" : 0,
+    "completedOn" : 1.593440209E9
+  }, {
+    "week" : 0,
+    "day" : 3,
+    "session" : 1,
+    "completedOn" : 1.593447822E9
+  }, {
+    "week" : 0,
+    "day" : 4,
+    "session" : 0,
+    "completedOn" : 1.593526E9
+  }, {
+    "week" : 0,
+    "day" : 5,
+    "session" : 0,
+    "completedOn" : 1.593612696E9
+  }, {
+    "week" : 0,
+    "day" : 6,
+    "session" : 3,
+    "completedOn" : 1.593725034E9
+  }, {
+    "week" : 0,
+    "day" : 7,
+    "session" : 0,
+    "completedOn" : 1.593796443E9
+  }, {
+    "week" : 0,
+    "day" : 7,
+    "session" : 3,
+    "completedOn" : 1.593823499E9
+  }, {
+    "week" : 26,
+    "day" : 0,
+    "session" : 0,
+    "completedOn" : 1.60900625E9
+  }, {
+    "week" : 26,
+    "day" : 0,
+    "session" : 2,
+    "completedOn" : 1.609023208E9
+  }, {
+    "week" : 26,
+    "day" : 0,
+    "session" : 3,
+    "completedOn" : 1.609034157E9
+  }, {
+    "week" : 26,
+    "day" : 1,
+    "session" : 0,
+    "completedOn" : 1.609093614E9
+  }, {
+    "week" : 26,
+    "day" : 1,
+    "session" : 1,
+    "completedOn" : 1.609102472E9
+  }, {
+    "week" : 26,
+    "day" : 1,
+    "session" : 2,
+    "completedOn" : 1.609111537E9
+  }, {
+    "week" : 26,
+    "day" : 1,
+    "session" : 3,
+    "completedOn" : 1.609123222E9
+  }, {
+    "week" : 26,
+    "day" : 2,
+    "session" : 0,
+    "completedOn" : 1.609180025E9
+  }, {
+    "week" : 26,
+    "day" : 2,
+    "session" : 1,
+    "completedOn" : 1.609189201E9
+  }, {
+    "week" : 26,
+    "day" : 2,
+    "session" : 3,
+    "completedOn" : 1.609207026E9
+  }, {
+    "week" : 26,
+    "day" : 3,
+    "session" : 0,
+    "completedOn" : 1.609266501E9
+  }, {
+    "week" : 26,
+    "day" : 3,
+    "session" : 1,
+    "completedOn" : 1.609274613E9
+  }, {
+    "week" : 26,
+    "day" : 3,
+    "session" : 2,
+    "completedOn" : 1.609284332E9
+  }, {
+    "week" : 26,
+    "day" : 3,
+    "session" : 3,
+    "completedOn" : 1.609297071E9
+  }, {
+    "week" : 26,
+    "day" : 4,
+    "session" : 0,
+    "completedOn" : 1.609352895E9
+  }, {
+    "week" : 26,
+    "day" : 4,
+    "session" : 1,
+    "completedOn" : 1.609361115E9
+  }, {
+    "week" : 26,
+    "day" : 4,
+    "session" : 2,
+    "completedOn" : 1.609370987E9
+  }, {
+    "week" : 26,
+    "day" : 5,
+    "session" : 0,
+    "completedOn" : 1.609437333E9
+  }, {
+    "week" : 26,
+    "day" : 5,
+    "session" : 1,
+    "completedOn" : 1.60944687E9
+  }, {
+    "week" : 26,
+    "day" : 6,
+    "session" : 0,
+    "completedOn" : 1.609524033E9
+  }, {
+    "week" : 26,
+    "day" : 6,
+    "session" : 1,
+    "completedOn" : 1.609531587E9
+  }, {
+    "week" : 26,
+    "day" : 6,
+    "session" : 2,
+    "completedOn" : 1.609541486E9
+  }, {
+    "week" : 26,
+    "day" : 6,
+    "session" : 3,
+    "completedOn" : 1.609556101E9
+  }, {
+    "week" : 52,
+    "day" : 0,
+    "session" : 0,
+    "completedOn" : 1.624640683E9
+  }, {
+    "week" : 52,
+    "day" : 0,
+    "session" : 2,
+    "completedOn" : 1.62465819E9
+  }, {
+    "week" : 52,
+    "day" : 0,
+    "session" : 3,
+    "completedOn" : 1.624667453E9
+  }, {
+    "week" : 52,
+    "day" : 1,
+    "session" : 2,
+    "completedOn" : 1.624743474E9
+  }, {
+    "week" : 52,
+    "day" : 1,
+    "session" : 3,
+    "completedOn" : 1.624752683E9
+  }, {
+    "week" : 52,
+    "day" : 2,
+    "session" : 0,
+    "completedOn" : 1.624813833E9
+  }, {
+    "week" : 52,
+    "day" : 2,
+    "session" : 1,
+    "completedOn" : 1.624821721E9
+  }, {
+    "week" : 52,
+    "day" : 2,
+    "session" : 2,
+    "completedOn" : 1.624831395E9
+  }, {
+    "week" : 52,
+    "day" : 2,
+    "session" : 3,
+    "completedOn" : 1.62484239E9
+  }, {
+    "week" : 52,
+    "day" : 3,
+    "session" : 0,
+    "completedOn" : 1.624900296E9
+  }, {
+    "week" : 52,
+    "day" : 3,
+    "session" : 1,
+    "completedOn" : 1.624908364E9
+  }, {
+    "week" : 52,
+    "day" : 3,
+    "session" : 3,
+    "completedOn" : 1.624924054E9
+  }, {
+    "week" : 52,
+    "day" : 4,
+    "session" : 0,
+    "completedOn" : 1.624987833E9
+  }, {
+    "week" : 52,
+    "day" : 4,
+    "session" : 1,
+    "completedOn" : 1.624997898E9
+  }, {
+    "week" : 52,
+    "day" : 4,
+    "session" : 2,
+    "completedOn" : 1.625007229E9
+  }, {
+    "week" : 52,
+    "day" : 4,
+    "session" : 3,
+    "completedOn" : 1.625016553E9
+  }, {
+    "week" : 52,
+    "day" : 5,
+    "session" : 1,
+    "completedOn" : 1.625079533E9
+  }, {
+    "week" : 52,
+    "day" : 5,
+    "session" : 2,
+    "completedOn" : 1.625088341E9
+  }, {
+    "week" : 52,
+    "day" : 5,
+    "session" : 3,
+    "completedOn" : 1.625101418E9
+  }, {
+    "week" : 52,
+    "day" : 6,
+    "session" : 0,
+    "completedOn" : 1.625161317E9
+  }, {
+    "week" : 52,
+    "day" : 6,
+    "session" : 1,
+    "completedOn" : 1.625170894E9
+  }, {
+    "week" : 52,
+    "day" : 6,
+    "session" : 3,
+    "completedOn" : 1.625193015E9
+  }, {
+    "week" : 88,
+    "day" : 0,
+    "session" : 0,
+    "completedOn" : 1.646158947666E9
+  }, {
+    "week" : 88,
+    "day" : 0,
+    "session" : 1,
+    "completedOn" : 1.646169208483E9
+  }, {
+    "week" : 88,
+    "day" : 0,
+    "session" : 2,
+    "completedOn" : 1.64617442767E9
+  }, {
+    "week" : 88,
+    "day" : 0,
+    "session" : 3,
+    "completedOn" : 1.646188213711E9
+  }, {
+    "week" : 88,
+    "day" : 1,
+    "session" : 0,
+    "completedOn" : 1.646244859315E9
+  }, {
+    "week" : 88,
+    "day" : 1,
+    "session" : 1,
+    "completedOn" : 1.646255334022E9
+  }, {
+    "week" : 88,
+    "day" : 1,
+    "session" : 2,
+    "completedOn" : 1.646269392403E9
+  }, {
+    "week" : 88,
+    "day" : 1,
+    "session" : 3,
+    "completedOn" : 1.646279467294E9
+  }, {
+    "week" : 88,
+    "day" : 2,
+    "session" : 0,
+    "completedOn" : 1.646331592883E9
+  }, {
+    "week" : 88,
+    "day" : 2,
+    "session" : 1,
+    "completedOn" : 1.646340617632E9
+  }, {
+    "week" : 88,
+    "day" : 2,
+    "session" : 2,
+    "completedOn" : 1.646349822477E9
+  }, {
+    "week" : 88,
+    "day" : 2,
+    "session" : 3,
+    "completedOn" : 1.64636916832E9
+  }, {
+    "week" : 88,
+    "day" : 3,
+    "session" : 0,
+    "completedOn" : 1.646418885453E9
+  }, {
+    "week" : 88,
+    "day" : 3,
+    "session" : 1,
+    "completedOn" : 1.646429856134E9
+  }, {
+    "week" : 88,
+    "day" : 3,
+    "session" : 2,
+    "completedOn" : 1.646442061761E9
+  }, {
+    "week" : 88,
+    "day" : 3,
+    "session" : 3,
+    "completedOn" : 1.646448445714E9
+  }, {
+    "week" : 88,
+    "day" : 4,
+    "session" : 0,
+    "completedOn" : 1.646504033706E9
+  }, {
+    "week" : 88,
+    "day" : 4,
+    "session" : 1,
+    "completedOn" : 1.646512745927E9
+  }, {
+    "week" : 88,
+    "day" : 4,
+    "session" : 2,
+    "completedOn" : 1.646525513987E9
+  }, {
+    "week" : 88,
+    "day" : 5,
+    "session" : 0,
+    "completedOn" : 1.646594570388E9
+  }, {
+    "week" : 88,
+    "day" : 5,
+    "session" : 1,
+    "completedOn" : 1.646602698691E9
+  }, {
+    "week" : 88,
+    "day" : 5,
+    "session" : 2,
+    "completedOn" : 1.646610068453E9
+  }, {
+    "week" : 89,
+    "day" : 6,
+    "session" : 0,
+    "completedOn" : 1.646678423105E9
+  }, {
+    "week" : 89,
+    "day" : 6,
+    "session" : 1,
+    "completedOn" : 1.646689602277E9
+  }, {
+    "week" : 89,
+    "day" : 6,
+    "session" : 2,
+    "completedOn" : 1.646697804275E9
+  }, {
+    "week" : 89,
+    "day" : 6,
+    "session" : 3,
+    "completedOn" : 1.646707764409E9
+  } ]
+}

@@ -60,7 +60,7 @@ public class PasswordGenerator {
     // Bridge password must contain at least one symbol ( !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~ );
     // This subset of symbols was chosen because they would be easier to communicate over the phone
     // As well as removing some that the older participants wouldn't understand
-    public static final String SYMBOLIC = "&.!?";
+    public static final String SYMBOLIC = ".!?";
 
     private static final char[] UPPERCASE_ARRAY = UPPERCASE.toCharArray();
     private static final char[] LOWERCASE_ARRAY = LOWERCASE.toCharArray();

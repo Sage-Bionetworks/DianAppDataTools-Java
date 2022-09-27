@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'org.jetbrains.kotlin.jvm' version '1.6.10'
 }
 
 java {
@@ -17,19 +18,28 @@ dependencies {
     implementation 'org.sagebionetworks:synapseJavaClient:362.0'
     implementation 'org.sagebionetworks.bridge:rest-client:0.22.31'
 
-    // Bridge Java SDK Logging classes
-    implementation 'org.apache.logging.log4j:log4j-api:2.13.3'
-    implementation 'org.apache.logging.log4j:log4j-core:2.13.3'
-    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.13.3'
-
     testImplementation 'junit:junit:4.13.2'
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.0")
     testImplementation("org.mockito:mockito-core:2.23.4")
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }
 
 jar {
     manifest {
-        attributes("Main-Class": "org.sagebionetworks.dian.datamigration.DataMigration")
+        attributes("Main-Class": "org.sagebionetworks.dian.datamigration.tools.schedulev2.ScheduleV2Migration")
     }
     from { configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+}
+repositories {
+    mavenCentral()
+}
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
 }
