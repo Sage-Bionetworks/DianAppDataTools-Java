@@ -17,6 +17,7 @@ sourceSets {
 dependencies {
     implementation 'org.sagebionetworks:synapseJavaClient:362.0'
     implementation 'org.sagebionetworks.bridge:rest-client:0.22.31'
+    implementation 'com.opencsv:opencsv:4.6'
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.0")
