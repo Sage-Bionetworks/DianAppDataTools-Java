@@ -5,10 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 
 import org.joda.time.DateTime;
-import org.joda.time.LocalTime;
-import org.joda.time.Minutes;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
-import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
 import org.sagebionetworks.bridge.rest.model.ScheduledSession;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
@@ -29,15 +26,10 @@ import org.sagebionetworks.dian.datamigration.tools.adherence.earnings.EarningDe
 import org.sagebionetworks.dian.datamigration.tools.rescheduler.TestSchedule;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
 
 import static java.util.Comparator.*;
 
@@ -66,7 +58,6 @@ public class ScheduleV2Migration {
 
             HashSet<String> arcIdList = BridgeJavaSdkUtil.getArcIdsInStudy(studyId);
 
-            // wbfxxk is the ScheduleTemplate study, it is a test study for figuring out the V2 schedule
             // Once we are ready to deploy this for all studies, use a curated list of all Study IDs
             for (String arcId : arcIdList) {
                 StudyParticipant p = BridgeJavaSdkUtil.getParticipantByExternalId(arcId);
@@ -113,7 +104,7 @@ public class ScheduleV2Migration {
                 // because it could overwrite any schedule or availability changes the user did in the mobile app.
                 if (!hasMigrated) {
                     System.out.println("Updating user client data for " + arcId);
-                    updateUserClientData(timeline, uId, availability, earningsController);
+                    updateUserClientData(timeline, p, availability, earningsController);
                 }
                 // However, always update their adherence record list as it should be safe
                 // and will not overwrite any data from the new V2 mobile app.
@@ -247,12 +238,12 @@ public class ScheduleV2Migration {
 
     public static void updateUserClientData(
             Timeline timeline,
-            String uId, SageV2Availability availability,
+            StudyParticipant participant, SageV2Availability availability,
             SageEarningsControllerV2 earningsController) throws IOException {
         SageUserClientData clientData =
                 createUserClientData(timeline, availability, earningsController);
         JsonElement clientDataJson = new Gson().toJsonTree(clientData);
-        BridgeJavaSdkUtil.updateParticipantClientData(uId, clientDataJson);
+        BridgeJavaSdkUtil.updateParticipantClientData(participant, clientDataJson);
     }
 
     public static WakeSleepSchedule
@@ -267,7 +258,7 @@ public class ScheduleV2Migration {
         createV2Availability(String uId, String availabilityJson) throws IOException {
         WakeSleepSchedule wakeSleepSchedule = createHMAvailability(uId, availabilityJson);
         if (wakeSleepSchedule == null) {
-            System.out.println("User " + uId + " has no availability yet");
+            System.out.println("User has no availability yet");
             return null;
         }
         return controller.createV2Availability(wakeSleepSchedule);
