@@ -203,10 +203,11 @@ open class SageScheduleController {
         // Sage schedules start with day 1, not 0, so offset to match CompletedTest days,
         // Unless it is the baseline week, where HM had 1-based index
         val dayOfWeekIdx = if(studyBurstWeekNum == 0) {
-            session.startDay
+            session.startDay + 1
         } else {
-            session.startDay - 1
+            session.startDay
         }
+
         val sessionIndex = sessionOfDayIdx(session, dailySessions)
         // Find the matching CompletedTest based of week/day/session_idx
         val matchingTest = earningsController.completedTests.firstOrNull {

@@ -319,7 +319,7 @@ public class ScheduleV2Migration {
                 // the odd first study burst day offset, let's move all week 0 session a day backwards
                 // so that they match the rest of the study bursts, and have day as 0 for the first day.
                 if ((completed.getWeek() == 0 || completed.getWeek() == 1) && completed.getDay() > 0) {
-                    completed = new CompletedTestV2(completed.getEventId(), completed.getWeek(),
+                    completed = new CompletedTestV2(completed.getEventId(), 0,
                             completed.getDay() - 1, completed.getSession(), completed.getCompletedOn());
                 }
                 adherenceRecordList.add(controller.createAdherenceRecord(session,
