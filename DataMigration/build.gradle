@@ -26,7 +26,7 @@ dependencies {
 
 jar {
     manifest {
-        attributes("Main-Class": "org.sagebionetworks.dian.datamigration.tools.rescheduler.ReschedulingTool")
+        attributes("Main-Class": "org.sagebionetworks.dian.datamigration.tools.schedulev2.ScheduleV2Migration")
     }
     from { configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
 }
