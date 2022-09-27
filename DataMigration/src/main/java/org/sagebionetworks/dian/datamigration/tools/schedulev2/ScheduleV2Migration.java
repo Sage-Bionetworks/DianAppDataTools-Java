@@ -48,6 +48,12 @@ public class ScheduleV2Migration {
     public static SageScheduleController controller = new SageScheduleController();
 
     public static void main(String[] args) throws IOException {
+        if (args.length < 4) {
+            throw new IllegalStateException("Please provide valid parameters in the form of:\n" +
+                    "java -jar NameOfJar.jar BRIDGE_EMAIL BRIDGE_PASSWORD BRIDGE_ID DEVICE_ID_TO_MIGRATE\n\n" +
+                    "Please note that Synapse accounts are not compatible with this program.");
+        }
+
         BridgeJavaSdkUtil.initialize(args[0], args[1], args[2]);
         runV2Migration();
     }
@@ -57,6 +63,7 @@ public class ScheduleV2Migration {
         List<Study> studyList = BridgeJavaSdkUtil.getAllStudies();
         for (Study study : studyList) {
             String studyId = study.getIdentifier();
+
             HashSet<String> arcIdList = BridgeJavaSdkUtil.getArcIdsInStudy(studyId);
 
             // wbfxxk is the ScheduleTemplate study, it is a test study for figuring out the V2 schedule
@@ -72,19 +79,6 @@ public class ScheduleV2Migration {
                 String uId = p.getId();
                 String sId = p.getStudyIds().get(0);
 
-                // Check for a user that has already migrated to V2 and signed into the app
-                SageUserClientData clientData = SageUserClientData.Companion.fromStudyParticipant(gson, p);
-                if (SageUserClientData.Companion.hasMigrated(clientData)) {
-                    System.out.println(arcId + " has already migrated to V2, leave their info alone");
-                    continue;
-                }
-
-                SageV1Schedule schedule = createV2Schedule(uId, sId);
-                if (schedule == null) {
-                    System.out.println(arcId + " has no schedule");
-                    continue;
-                }
-
                 SageV2Availability availability = createV2Availability(
                         uId, getAvailabilityJsonFromBridge(uId));
                 if (availability == null) {
@@ -92,16 +86,39 @@ public class ScheduleV2Migration {
                     continue;
                 }
 
+                SageV1Schedule v1Schedule = createV1Schedule(uId, getScheduleJsonFromBridge(uId));
+                if (v1Schedule == null) {
+                    System.out.println(arcId + " has no schedule");
+                    continue;
+                }
+
                 System.out.println("Performing V2 migration on " + arcId);
 
+                // Check for a user that has already migrated to V2 and signed into the app
+                SageUserClientData clientData = SageUserClientData.Companion.fromStudyParticipant(gson, p);
+                boolean hasMigrated = SageUserClientData.Companion.hasMigrated(clientData);
+
+                if (!hasMigrated) {
+                    System.out.println("Creating schedule for " + arcId);
+                    createV2Schedule(v1Schedule, uId, sId);
+                }
+
                 SageEarningsControllerV2 earningsController =
-                        createEarningsController(uId, schedule, getCompletedTestsJsonFromBridge(uId));
+                        createEarningsController(uId, v1Schedule, getCompletedTestsJsonFromBridge(uId));
 
                 StudyActivityEventList eventList = BridgeJavaSdkUtil.getAllTimelineEvents(uId, sId);
                 Timeline timeline = BridgeJavaSdkUtil.getParticipantsTimeline(uId, sId);
 
-                updateUserClientData(timeline, uId, availability, earningsController);
-                updateAdherenceRecords(timeline, eventList, uId, sId, schedule, earningsController);
+                // If the user has already signed into the V2 app, don't overwrite their client data,
+                // because it could overwrite any schedule or availability changes the user did in the mobile app.
+                if (!hasMigrated) {
+                    System.out.println("Updating user client data for " + arcId);
+                    updateUserClientData(timeline, uId, availability, earningsController);
+                }
+                // However, always update their adherence record list as it should be safe
+                // and will not overwrite any data from the new V2 mobile app.
+                System.out.println("Updating adherence for " + arcId);
+                updateAdherenceRecords(timeline, eventList, uId, sId, v1Schedule, earningsController);
             }
         }
     }
@@ -174,15 +191,8 @@ public class ScheduleV2Migration {
         return controller.createV1Schedule(testSchedule);
     }
 
-    public static SageV1Schedule
-        createV2Schedule(String uId, String sId) throws IOException {
-
-        SageV1Schedule v1Schedule = createV1Schedule(
-                uId, getScheduleJsonFromBridge(uId));
-
-        if (v1Schedule == null) {
-            return null;
-        }
+    public static void
+        createV2Schedule(SageV1Schedule v1Schedule, String uId, String sId) throws IOException {
 
         String iANATimezone = getTimezone(v1Schedule);
         for (int i = 0; i < v1Schedule.getStudyBursts().size(); i++) {
@@ -208,8 +218,6 @@ public class ScheduleV2Migration {
                     startDate,
                 iANATimezone);
         }
-
-        return v1Schedule;
     }
 
     public static String getTimezone(SageV1Schedule v1Schedule) {
