@@ -276,10 +276,9 @@ public class BridgeJavaSdkUtil {
     }
 
     public static void updateParticipantClientData(
-            String userId, JsonElement clientDataJson) throws IOException {
-        StudyParticipant participant = new StudyParticipant()
-                .clientData(clientDataJson);
-        participantsApi.updateParticipant(userId, participant).execute();
+            StudyParticipant existing, JsonElement clientDataJson) throws IOException {
+        existing.clientData(clientDataJson);
+        participantsApi.updateParticipant(existing.getId(), existing).execute();
     }
 
     @VisibleForTesting
