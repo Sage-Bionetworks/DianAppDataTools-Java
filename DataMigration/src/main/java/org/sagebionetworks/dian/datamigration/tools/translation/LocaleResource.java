@@ -38,6 +38,9 @@ public class LocaleResource {
 
         if(countryKey.equals("US") && languageKey.equals("en")) {
             resource = "values" + File.separator;
+        } else if (countryKey.equals("419") && languageKey.equals("es")) {
+            // Support for this was added with android 24, but iOS supports this language
+            resource = "values-b+es+419" + File.separator;
         } else {
             resource = "values-" + languageKey + "-r" + countryKey + File.separator;
         }
@@ -47,10 +50,6 @@ public class LocaleResource {
 
     public boolean isValid() {
         if(resource==null) {
-            return false;
-        }
-        // android does not support region 419 as a locale resource.
-        if(countryKey.equals("419")) {
             return false;
         }
         if(countryKey.isEmpty() || languageKey.isEmpty()) {
