@@ -5,7 +5,10 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 
 import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
+import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
 import org.sagebionetworks.bridge.rest.model.ScheduledSession;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
@@ -232,8 +235,17 @@ public class ScheduleV2Migration {
         List<ScheduledSessionStart> sessionStartList =
                 controller.createAvailableTimeList(timeline.getSchedule(), availability);
 
+        String baselineCompletionDate = null;
+        if (earningsController.getBaselineTestComplete() != null) {
+            DateTime completionDate = SageScheduleController.Companion.createDateTime(
+                    earningsController.getBaselineTestComplete().completedOn);
+            DateTimeFormatter dtf = DateTimeFormat.forPattern("MM/dd/yyyy HH:mm:ss");
+            baselineCompletionDate = dtf.print(completionDate);
+        }
+
         // If we are using this code to write their client data, they have not migrated yet
-        return new SageUserClientData(false, sessionStartList, availability, earningsList);
+        return new SageUserClientData(false, baselineCompletionDate,
+                sessionStartList, availability, earningsList);
     }
 
     public static void updateUserClientData(

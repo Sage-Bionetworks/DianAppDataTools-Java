@@ -35,7 +35,8 @@ open class SageScheduleController {
                 Pair("Japan Standard Time", "Asia/Tokyo"),
                 Pair("Eastern Standard Time", "US/Eastern"),
                 Pair("Greenwich Mean Time", "UTC"),
-                Pair("Central Standard Time", "US/Central"))
+                Pair("Central Standard Time", "US/Central"),
+                Pair("West Greenland Standard Time", "America/Nuuk"))
 
         /**
          * The number of days in a study burst, this value should only be referenced
@@ -488,6 +489,10 @@ data class SageUserClientData(
          * This will be set when the user logs in on the V2 app or
          * when they upgrade the app and migrate from V1 to V2 scheduling **/
         var hasMigratedToV2: Boolean?,
+        /**
+         * The date at which the baseline test was complete, null if incomplete
+         */
+        var baselineCompleteDate: String? = null,
         /** Due to the limitation with Bridge V2 scheduling, and implementing
          * a Ecological momentary assessment (EMA) where the sessions are randomly
          * spread out throughout an availability period during the day,
