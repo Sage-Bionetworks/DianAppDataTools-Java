@@ -77,22 +77,23 @@ public class ScheduleV2MigrationTests {
     private final Path scheduleMalformedJson = rootFileTestFolder.resolve("Malformed_V1_Schedule.json");
     private final Path availabilityJson = rootFileTestFolder.resolve("000050_Availability.json");
     private final Path scheduleV2Json = rootFileTestFolder.resolve("000050_V2_Schedule.json");
+    private final Path scheduleV2NewJson = rootFileTestFolder.resolve("000072_V2_ScheduleNew.json");
     private final SageScheduleController controller = new SageScheduleController();
 
     private final Gson gson = new Gson();
     public static Map<String, String> activityEventMap = new HashMap<String, String>() {{
         put("created_on", "2022-06-28T00:28:23.139Z");
-        put("timeline_retrieved", "2021-06-22T16:15:57.775Z");
-        put("study_burst:timeline_retrieved_burst:01", "2021-06-22T16:15:57.775Z");
-        put("study_burst:timeline_retrieved_burst:02", "2021-12-21T16:02:12.916Z");
-        put("study_burst:timeline_retrieved_burst:03", "2022-06-21T15:26:07.208Z");
-        put("study_burst:timeline_retrieved_burst:04", "2022-12-20T16:28:03.983Z");
-        put("study_burst:timeline_retrieved_burst:05", "2023-06-20T15:12:28.688Z");
-        put("study_burst:timeline_retrieved_burst:06", "2023-12-19T15:50:03.678Z");
-        put("study_burst:timeline_retrieved_burst:07", "2024-06-18T15:26:20.409Z");
-        put("study_burst:timeline_retrieved_burst:08", "2024-12-17T15:53:05.956Z");
-        put("study_burst:timeline_retrieved_burst:09", "2025-06-17T14:48:51.642Z");
-        put("study_burst:timeline_retrieved_burst:10", "2025-12-16T15:35:13.667Z");
+        put(SageScheduleController.ACTIVITY_EVENT_CREATE_SCHEDULE, "2021-06-22T16:15:57.775Z");
+        put(SageScheduleController.Companion.studyBurstActivityEventId(0), "2021-06-22T16:15:57.775Z");
+        put(SageScheduleController.Companion.studyBurstActivityEventId(1), "2021-12-21T16:02:12.916Z");
+        put(SageScheduleController.Companion.studyBurstActivityEventId(2), "2022-06-21T15:26:07.208Z");
+        put(SageScheduleController.Companion.studyBurstActivityEventId(3), "2022-12-20T16:28:03.983Z");
+        put(SageScheduleController.Companion.studyBurstActivityEventId(4), "2023-06-20T15:12:28.688Z");
+        put(SageScheduleController.Companion.studyBurstActivityEventId(5), "2023-12-19T15:50:03.678Z");
+        put(SageScheduleController.Companion.studyBurstActivityEventId(6), "2024-06-18T15:26:20.409Z");
+        put(SageScheduleController.Companion.studyBurstActivityEventId(7), "2024-12-17T15:53:05.956Z");
+        put(SageScheduleController.Companion.studyBurstActivityEventId(8), "2025-06-17T14:48:51.642Z");
+        put(SageScheduleController.Companion.studyBurstActivityEventId(9), "2025-12-16T15:35:13.667Z");
     }};
     public final StudyActivityEventList createActivityEventList() {
         StudyActivityEventList activityEventList =
@@ -146,9 +147,14 @@ public class ScheduleV2MigrationTests {
 
         // Skip this test, as they have bad CompletedTestJson that fails the validation,
         // This user is already fully done with all their study burst and has been paid their earnings
-        List<Integer> skipForNow = Arrays.asList(724);
+        //List<Integer> skipForNow = Arrays.asList(724);
+        List<Integer> skipForNow = Arrays.asList(636, 1292);
 
-        int highestFileInAllSession = 1012;
+        // 636 - 765357 has 27 completed tests that couldn't be matched to a schedule, its ok they have
+        // completed the EXR study and have already been paid
+        // 1292 = 414864, has not enough time between study bursts, https://sagebionetworks.jira.com/browse/DIAN-459
+
+        int highestFileInAllSession = 2420;
         for(int fileId = 0; fileId <= highestFileInAllSession; fileId++) {
 
             if (skipForNow.contains(fileId)) {
@@ -156,6 +162,7 @@ public class ScheduleV2MigrationTests {
             }
 
             String fileIdStr = fileId + "";
+            System.out.println(fileIdStr);
 
             if (SageScheduleControllerTests.withdrawnUsers.contains(fileId) ||
                     SageScheduleControllerTests.skipNeedsManualIntervention.contains(fileId)) {
@@ -183,7 +190,7 @@ public class ScheduleV2MigrationTests {
 
             Gson gson = new Gson();
             Timeline timeline = gson.fromJson(
-                    PathsHelper.readFile(scheduleV2Json), Timeline.class);
+                    PathsHelper.readFile(scheduleV2NewJson), Timeline.class);
             StudyActivityEventList eventList = createActivityEventList();
 
             SageUserClientData clientData = ScheduleV2Migration.createUserClientData(
