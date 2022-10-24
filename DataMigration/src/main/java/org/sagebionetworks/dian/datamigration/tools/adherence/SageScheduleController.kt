@@ -35,7 +35,8 @@ open class SageScheduleController {
                 Pair("Japan Standard Time", "Asia/Tokyo"),
                 Pair("Eastern Standard Time", "US/Eastern"),
                 Pair("Greenwich Mean Time", "UTC"),
-                Pair("Central Standard Time", "US/Central"))
+                Pair("Central Standard Time", "US/Central"),
+                Pair("West Greenland Standard Time", "America/Nuuk"))
 
         /**
          * The number of days in a study burst, this value should only be referenced
