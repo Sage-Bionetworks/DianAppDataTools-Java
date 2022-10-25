@@ -30,6 +30,7 @@ import org.sagebionetworks.dian.datamigration.tools.rescheduler.TestSchedule;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -55,6 +56,8 @@ public class ScheduleV2Migration {
 
     public static void runV2Migration() throws IOException {
 
+        StringBuilder errorStrings = new StringBuilder();
+
         List<Study> studyList = BridgeJavaSdkUtil.getAllStudies();
         for (Study study : studyList) {
             String studyId = study.getIdentifier();
@@ -63,58 +66,65 @@ public class ScheduleV2Migration {
 
             // Once we are ready to deploy this for all studies, use a curated list of all Study IDs
             for (String arcId : arcIdList) {
-                StudyParticipant p = BridgeJavaSdkUtil.getParticipantByExternalId(arcId);
+                try {
+                    StudyParticipant p = BridgeJavaSdkUtil.getParticipantByExternalId(arcId);
 
-                if (p.getStudyIds() == null || p.getStudyIds().isEmpty()) {
-                    System.out.println(arcId + " has withdrawn");
-                    continue; // user has withdrawn, no need to migrate
+                    if (p.getStudyIds() == null || p.getStudyIds().isEmpty()) {
+                        System.out.println(arcId + " has withdrawn");
+                        continue; // user has withdrawn, no need to migrate
+                    }
+
+                    String uId = p.getId();
+                    String sId = p.getStudyIds().get(0);
+
+                    SageV2Availability availability = createV2Availability(
+                            uId, getAvailabilityJsonFromBridge(uId));
+                    if (availability == null) {
+                        System.out.println(arcId + " has no availability");
+                        continue;
+                    }
+
+                    SageV1Schedule v1Schedule = createV1Schedule(uId, getScheduleJsonFromBridge(uId));
+                    if (v1Schedule == null) {
+                        System.out.println(arcId + " has no schedule");
+                        continue;
+                    }
+
+                    System.out.println("Performing V2 migration on " + arcId);
+
+                    // Check for a user that has already migrated to V2 and signed into the app
+                    SageUserClientData clientData = SageUserClientData.Companion.fromStudyParticipant(gson, p);
+                    boolean hasMigrated = SageUserClientData.Companion.hasMigrated(clientData);
+
+                    if (!hasMigrated) {
+                        System.out.println("Creating schedule for " + arcId);
+                        createV2Schedule(v1Schedule, uId, sId);
+                    }
+
+                    SageEarningsControllerV2 earningsController =
+                            createEarningsController(uId, v1Schedule, getCompletedTestsJsonFromBridge(uId));
+
+                    StudyActivityEventList eventList = BridgeJavaSdkUtil.getAllTimelineEvents(uId, sId);
+                    Timeline timeline = BridgeJavaSdkUtil.getParticipantsTimeline(uId, sId);
+
+                    // If the user has already signed into the V2 app, don't overwrite their client data,
+                    // because it could overwrite any schedule or availability changes the user did in the mobile app.
+                    if (!hasMigrated) {
+                        System.out.println("Updating user client data for " + arcId);
+                        updateUserClientData(timeline, p, availability, earningsController);
+                    }
+                    // However, always update their adherence record list as it should be safe
+                    // and will not overwrite any data from the new V2 mobile app.
+                    System.out.println("Updating adherence for " + arcId);
+                    updateAdherenceRecords(timeline, eventList, uId, sId, v1Schedule, earningsController);
+                } catch (Exception e) {
+                    errorStrings.append("\nError migrating ").append(arcId)
+                            .append("\n").append(e.getMessage()).append("\n");
                 }
-
-                String uId = p.getId();
-                String sId = p.getStudyIds().get(0);
-
-                SageV2Availability availability = createV2Availability(
-                        uId, getAvailabilityJsonFromBridge(uId));
-                if (availability == null) {
-                    System.out.println(arcId + " has no availability");
-                    continue;
-                }
-
-                SageV1Schedule v1Schedule = createV1Schedule(uId, getScheduleJsonFromBridge(uId));
-                if (v1Schedule == null) {
-                    System.out.println(arcId + " has no schedule");
-                    continue;
-                }
-
-                System.out.println("Performing V2 migration on " + arcId);
-
-                // Check for a user that has already migrated to V2 and signed into the app
-                SageUserClientData clientData = SageUserClientData.Companion.fromStudyParticipant(gson, p);
-                boolean hasMigrated = SageUserClientData.Companion.hasMigrated(clientData);
-
-                if (!hasMigrated) {
-                    System.out.println("Creating schedule for " + arcId);
-                    createV2Schedule(v1Schedule, uId, sId);
-                }
-
-                SageEarningsControllerV2 earningsController =
-                        createEarningsController(uId, v1Schedule, getCompletedTestsJsonFromBridge(uId));
-
-                StudyActivityEventList eventList = BridgeJavaSdkUtil.getAllTimelineEvents(uId, sId);
-                Timeline timeline = BridgeJavaSdkUtil.getParticipantsTimeline(uId, sId);
-
-                // If the user has already signed into the V2 app, don't overwrite their client data,
-                // because it could overwrite any schedule or availability changes the user did in the mobile app.
-                if (!hasMigrated) {
-                    System.out.println("Updating user client data for " + arcId);
-                    updateUserClientData(timeline, p, availability, earningsController);
-                }
-                // However, always update their adherence record list as it should be safe
-                // and will not overwrite any data from the new V2 mobile app.
-                System.out.println("Updating adherence for " + arcId);
-                updateAdherenceRecords(timeline, eventList, uId, sId, v1Schedule, earningsController);
             }
         }
+
+        System.out.println("\n" + errorStrings.toString());
     }
 
     public static String getScheduleJsonFromBridge(String uId) throws IOException {
@@ -176,7 +186,7 @@ public class ScheduleV2Migration {
     }
 
     public static SageV1Schedule
-        createV1Schedule(String uId, String scheduleJson) throws IOException {
+    createV1Schedule(String uId, String scheduleJson) throws IOException {
         TestSchedule testSchedule = createHMSchedule(uId, scheduleJson);
         if (testSchedule == null) {
             System.out.println("User " + uId + " has no schedule yet");
@@ -186,20 +196,19 @@ public class ScheduleV2Migration {
     }
 
     public static void
-        createV2Schedule(SageV1Schedule v1Schedule, String uId, String sId) throws IOException {
+    createV2Schedule(SageV1Schedule v1Schedule, String uId, String sId) throws IOException {
 
         String iANATimezone = getTimezone(v1Schedule);
         for (int i = 0; i < v1Schedule.getStudyBursts().size(); i++) {
             SageV1StudyBurst studyBurst = v1Schedule.getStudyBursts().get(i);
 
-            // V1 HM scheduling had the practice (baseline) test included and set to
-            // the first study burst start date. This shifted all study bursts by 1 day.
             // The new V2 Sage scheduling does not include the practice test, and so
             // the study as a whole, and the first study burst schedule starts.
             DateTime startDate = SageScheduleController.Companion
-                    .createDateTime(studyBurst.getStartDate()).plusDays(1);
+                    .createDateTime(studyBurst.getStartDate());
 
             if (i == 0) {
+                // the first study burst start date. This shifted all study bursts by 1 day.
                 // Make sure this is sent first to create the schedule at the correct study start date
                 BridgeJavaSdkUtil.updateStudyBurst(
                         uId, sId, SageScheduleController.ACTIVITY_EVENT_CREATE_SCHEDULE,
@@ -207,10 +216,10 @@ public class ScheduleV2Migration {
                         iANATimezone);
             }
             BridgeJavaSdkUtil.updateStudyBurst(
-                // i+1 for burst index, as Bridge designates 01 as first, not 00
-                uId, sId, SageScheduleController.Companion.studyBurstActivityEventId(i+1),
+                    // i+1 for burst index, as Bridge designates 01 as first, not 00
+                    uId, sId, SageScheduleController.Companion.studyBurstActivityEventId(i+1),
                     startDate,
-                iANATimezone);
+                    iANATimezone);
         }
     }
 
@@ -259,7 +268,7 @@ public class ScheduleV2Migration {
     }
 
     public static WakeSleepSchedule
-        createHMAvailability(String uId, String availabilityJson) throws IOException {
+    createHMAvailability(String uId, String availabilityJson) throws IOException {
         if (availabilityJson == null) {
             return null;
         }
@@ -267,7 +276,7 @@ public class ScheduleV2Migration {
     }
 
     public static SageV2Availability
-        createV2Availability(String uId, String availabilityJson) throws IOException {
+    createV2Availability(String uId, String availabilityJson) throws IOException {
         WakeSleepSchedule wakeSleepSchedule = createHMAvailability(uId, availabilityJson);
         if (wakeSleepSchedule == null) {
             System.out.println("User has no availability yet");
@@ -277,7 +286,7 @@ public class ScheduleV2Migration {
     }
 
     public static HmDataModel.CompletedTestList
-        createCompletedTests(String completedTestsJson) throws IOException {
+    createCompletedTests(String completedTestsJson) throws IOException {
         if (completedTestsJson == null || "".equals(completedTestsJson)) {
             return new HmDataModel.CompletedTestList(new ArrayList<>());
         }
@@ -318,6 +327,8 @@ public class ScheduleV2Migration {
 
         String iANATimezone = getTimezone(v1Schedule);
 
+        int i = 0;
+
         List<AdherenceRecord> adherenceRecordList = new ArrayList<>();
         for(ScheduledSession session : timeline.getSchedule()) {
             List<ScheduledSession> allSessionsOfDay =
@@ -325,8 +336,10 @@ public class ScheduleV2Migration {
                             session.getStartEventId(), session.getStartDay());
             CompletedTestV2 completed = controller
                     .findCompletedTest(session, allSessionsOfDay, earningsController);
+
             // Test was completed, make an adherence record for it
             if (completed != null) {
+                i++;
                 // To make V2 of the earnings controller more simple and get rid of the
                 // the odd first study burst day offset, let's move all week 0 session a day backwards
                 // so that they match the rest of the study bursts, and have day as 0 for the first day.
@@ -340,6 +353,7 @@ public class ScheduleV2Migration {
                         gson.toJsonTree(completed), iANATimezone));
             }
         }
+        System.out.println(i + " adherence records created");
 
         return adherenceRecordList;
     }
