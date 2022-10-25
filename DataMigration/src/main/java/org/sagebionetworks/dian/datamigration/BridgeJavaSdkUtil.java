@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.internal.LinkedTreeMap;
 
+import org.apache.commons.collections4.ListUtils;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.json.JSONObject;
@@ -81,6 +82,9 @@ public class BridgeJavaSdkUtil {
 
     // Maximum character count for user attributes
     private static final int ATTRIBUTE_LENGTH_MAX = 255;
+
+    // Maximum adherence records that can be updated at once
+    private static final int ADHERENCE_RECORD_MAX_COUNT = 25;
 
     private static ObjectMapper objectMapper = new ObjectMapper();
 
@@ -611,10 +615,14 @@ public class BridgeJavaSdkUtil {
     }
 
     public static void updateAdherence(String userId, String studyId, List<AdherenceRecord> records) throws IOException {
-        AdherenceRecordUpdates adherenceUpdate = new AdherenceRecordUpdates();
-        adherenceUpdate.setRecords(records);
-        adherenceRecordsApi.updateStudyParticipantAdherenceRecords(
-                studyId, userId, adherenceUpdate).execute();
+        List<List<AdherenceRecord>> batchedRecordList = ListUtils
+                .partition(records, ADHERENCE_RECORD_MAX_COUNT);
+        for (List<AdherenceRecord> recordList : batchedRecordList) {
+            AdherenceRecordUpdates adherenceUpdate = new AdherenceRecordUpdates();
+            adherenceUpdate.setRecords(recordList);
+            adherenceRecordsApi.updateStudyParticipantAdherenceRecords(
+                    studyId, userId, adherenceUpdate).execute();
+        }
     }
 
     public static AdherenceRecordList getUserAdherenceRecords(String userId, String studyId) throws IOException {
