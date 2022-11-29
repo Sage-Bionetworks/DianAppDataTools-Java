@@ -5,10 +5,10 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 
 import org.joda.time.DateTime;
+import org.joda.time.Days;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 import org.sagebionetworks.bridge.rest.model.AdherenceRecord;
-import org.sagebionetworks.bridge.rest.model.AdherenceRecordList;
 import org.sagebionetworks.bridge.rest.model.ScheduledSession;
 import org.sagebionetworks.bridge.rest.model.Study;
 import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
