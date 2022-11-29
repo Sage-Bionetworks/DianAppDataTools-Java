@@ -98,7 +98,7 @@ public class ScheduleV2Migration {
 
                     if (!hasMigrated) {
                         System.out.println("Creating schedule for " + arcId);
-                        createV2Schedule(v1Schedule, uId, sId);
+                        createV2Schedule(arcId, v1Schedule, uId, sId);
                     }
 
                     SageEarningsControllerV2 earningsController =
@@ -196,16 +196,48 @@ public class ScheduleV2Migration {
     }
 
     public static void
-    createV2Schedule(SageV1Schedule v1Schedule, String uId, String sId) throws IOException {
+    createV2Schedule(String arcId, SageV1Schedule v1Schedule, String uId, String sId) throws IOException {
 
         String iANATimezone = getTimezone(v1Schedule);
+        System.out.println("User timezone is " + iANATimezone);
+
+        DateTime studyStart = SageScheduleController.Companion
+                .createDateTime(v1Schedule.getStudyBursts().get(0).getStartDate(), iANATimezone)
+                // Putting this date at noon, gives Bridge the most flexibility with
+                // how it adjusts local times and time zones to get the correct start day
+                .withTimeAtStartOfDay().plusHours(12);
+
         for (int i = 0; i < v1Schedule.getStudyBursts().size(); i++) {
             SageV1StudyBurst studyBurst = v1Schedule.getStudyBursts().get(i);
 
             // The new V2 Sage scheduling does not include the practice test, and so
             // the study as a whole, and the first study burst schedule starts.
             DateTime startDate = SageScheduleController.Companion
-                    .createDateTime(studyBurst.getStartDate());
+                    .createDateTime(studyBurst.getStartDate(), iANATimezone)
+                    // Putting this date at 1 PM, gives Bridge the most flexibility with
+                    // how it adjusts local times and time zones to get the correct start day
+                    // Add one additional hour to account for any daylight savings issues
+                    .withTimeAtStartOfDay().plusHours(13);
+
+            // HappyMedium's app had future study bursts that were off by 1 day and these
+            // make the dashboard looks disjointed.
+            // This doesn't happen all the time, so first check for the situation.
+            // To fix it, move each future study burst start date by 1 day
+            if (startDate.isAfterNow()) {
+                // plus 1 hour accounts for daylight savings time issues
+                int daysFromStart = Days.daysBetween(studyStart, startDate).getDays();
+                int expectedDays = SageScheduleController.Companion.getWeeksBetweenStudyBursts() *
+                        SageScheduleController.Companion.getDaysInAllStudyBursts() * i;
+                if ((expectedDays - daysFromStart) == 1) {
+                    startDate = startDate.plusDays(1);
+                    System.out.println(arcId + " study burst " + (i+1) +
+                            " is off by 1 day, moving to 1 day in the future");
+                } else if ((expectedDays - daysFromStart) == -1) {
+                    startDate = startDate.minusDays(1);
+                    System.out.println(arcId + " study burst " + (i+1) +
+                            " is off by 1 day, moving to 1 day in the past");
+                }
+            }
 
             if (i == 0) {
                 // the first study burst start date. This shifted all study bursts by 1 day.
