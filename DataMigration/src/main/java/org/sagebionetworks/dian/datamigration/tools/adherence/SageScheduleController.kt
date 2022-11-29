@@ -2,10 +2,7 @@ package org.sagebionetworks.dian.datamigration.tools.adherence
 
 import com.google.gson.Gson
 import com.google.gson.internal.LinkedTreeMap
-import org.joda.time.DateTime
-import org.joda.time.LocalTime
-import org.joda.time.Minutes
-import org.joda.time.Weeks
+import org.joda.time.*
 import org.joda.time.format.DateTimeFormatterBuilder
 import org.sagebionetworks.bridge.rest.model.*
 import org.sagebionetworks.dian.datamigration.HmDataModel
@@ -45,6 +42,7 @@ open class SageScheduleController {
          */
         val daysInFirstStudyBurst = 8
         val daysInAllStudyBursts = 7
+        val weeksBetweenStudyBursts = 26
         val sessionsInABurst = 28
         fun daysInStudyBurst(studyBurstIndex: Int): Int {
             return when(studyBurstIndex) {
@@ -73,6 +71,17 @@ open class SageScheduleController {
          */
         public fun createDateTime(hmTimeStamp: Double): DateTime {
             return DateTime((hmTimeStamp * 1000).toLong())
+        }
+
+        /**
+         * Converts an HM timestamp that are stored on both iOS/Android to a DateTime
+         * @param hmTimeStamp a unix timestamp since 1970 in seconds
+         * @param timezone a valid timezone name to be used when creating the date time
+         * @return a DateTime based on the parameter hmTimeStamp
+         */
+        public fun createDateTime(hmTimeStamp: Double, timezone: String): DateTime {
+            return DateTime((hmTimeStamp * 1000).toLong(),
+                    DateTimeZone.forTimeZone(TimeZone.getTimeZone(timezone)))
         }
     }
 
