@@ -46,11 +46,14 @@ public class ScheduleV2Migration {
     public static void main(String[] args) throws IOException {
         if (args.length < 4) {
             throw new IllegalStateException("Please provide valid parameters in the form of:\n" +
-                    "java -jar NameOfJar.jar BRIDGE_EMAIL BRIDGE_PASSWORD BRIDGE_ID DEVICE_ID_TO_MIGRATE\n\n" +
+                    "java -jar NameOfJar.jar BRIDGE_EMAIL BRIDGE_PASSWORD BRIDGE_ID_1 BRIDGE_ID_2 \n\n" +
                     "Please note that Synapse accounts are not compatible with this program.");
         }
 
         BridgeJavaSdkUtil.initialize(args[0], args[1], args[2]);
+        runV2Migration();
+
+        BridgeJavaSdkUtil.initialize(args[0], args[1], args[3]);
         runV2Migration();
     }
 
