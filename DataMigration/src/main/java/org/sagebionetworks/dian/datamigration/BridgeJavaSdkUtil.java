@@ -55,7 +55,8 @@ public class BridgeJavaSdkUtil {
     // Bridge Authentication vars
     public static String BRIDGE_EMAIL = System.getenv("BR_EMAIL");
     public static String BRIDGE_PW = System.getenv("BR_PW");
-    private static String BRIDGE_ID = System.getenv("BR_ID");
+    public static String BRIDGE_ID = System.getenv("BR_ID");
+    public static String BRIDGE_ID2 = System.getenv("BR_ID2");
 
     // User attribute keys
     public static final String ATTRIBUTE_ARC_ID = "ARC_ID";
