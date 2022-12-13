@@ -15,8 +15,10 @@ import org.sagebionetworks.bridge.rest.model.StudyActivityEventList;
 import org.sagebionetworks.bridge.rest.model.StudyParticipant;
 import org.sagebionetworks.bridge.rest.model.Timeline;
 import org.sagebionetworks.dian.datamigration.BridgeJavaSdkUtil;
+import org.sagebionetworks.dian.datamigration.FileLogger;
 import org.sagebionetworks.dian.datamigration.HmDataModel;
 import org.sagebionetworks.dian.datamigration.PathsHelper;
+import org.sagebionetworks.dian.datamigration.SynapseUtil;
 import org.sagebionetworks.dian.datamigration.tools.adherence.CompletedTestV2;
 import org.sagebionetworks.dian.datamigration.tools.adherence.SageEarningsControllerV2;
 import org.sagebionetworks.dian.datamigration.tools.adherence.SageScheduleController;
@@ -28,9 +30,9 @@ import org.sagebionetworks.dian.datamigration.tools.adherence.ScheduledSessionSt
 import org.sagebionetworks.dian.datamigration.tools.adherence.earnings.EarningDetails;
 import org.sagebionetworks.dian.datamigration.tools.rescheduler.TestSchedule;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -39,22 +41,25 @@ import static java.util.Comparator.*;
 
 public class ScheduleV2Migration {
 
+    private static FileLogger fileLogger = new FileLogger();
     public static ObjectMapper objectMapper = new ObjectMapper();
     public static Gson gson = new Gson();
     public static SageScheduleController controller = new SageScheduleController();
 
-    public static void main(String[] args) throws IOException {
-        if (args.length < 4) {
-            throw new IllegalStateException("Please provide valid parameters in the form of:\n" +
-                    "java -jar NameOfJar.jar BRIDGE_EMAIL BRIDGE_PASSWORD BRIDGE_ID_1 BRIDGE_ID_2 \n\n" +
-                    "Please note that Synapse accounts are not compatible with this program.");
-        }
+    public static void main(String[] args) throws IOException, Throwable {
+        fileLogger.openFile();
 
-        BridgeJavaSdkUtil.initialize(args[0], args[1], args[2]);
+        BridgeJavaSdkUtil.initialize();
         runV2Migration();
 
-        BridgeJavaSdkUtil.initialize(args[0], args[1], args[3]);
+        BridgeJavaSdkUtil.BRIDGE_ID = BridgeJavaSdkUtil.BRIDGE_ID2;
+
+        BridgeJavaSdkUtil.initialize();
         runV2Migration();
+        
+        File file = fileLogger.closeFile();
+        SynapseUtil.initializeSynapse();
+        SynapseUtil.uploadToSynapse(file, SynapseUtil.projectId);
     }
 
     public static void runV2Migration() throws IOException {
@@ -65,6 +70,7 @@ public class ScheduleV2Migration {
         for (Study study : studyList) {
             String studyId = study.getIdentifier();
 
+            fileLogger.write("Getting all users from Study ID " + studyId);
             HashSet<String> arcIdList = BridgeJavaSdkUtil.getArcIdsInStudy(studyId);
 
             // Once we are ready to deploy this for all studies, use a curated list of all Study IDs
@@ -73,7 +79,7 @@ public class ScheduleV2Migration {
                     StudyParticipant p = BridgeJavaSdkUtil.getParticipantByExternalId(arcId);
 
                     if (p.getStudyIds() == null || p.getStudyIds().isEmpty()) {
-                        System.out.println(arcId + " has withdrawn");
+                        fileLogger.write(arcId + " has withdrawn");
                         continue; // user has withdrawn, no need to migrate
                     }
 
@@ -83,24 +89,24 @@ public class ScheduleV2Migration {
                     SageV2Availability availability = createV2Availability(
                             uId, getAvailabilityJsonFromBridge(uId));
                     if (availability == null) {
-                        System.out.println(arcId + " has no availability");
+                        fileLogger.write(arcId + " has no availability");
                         continue;
                     }
 
                     SageV1Schedule v1Schedule = createV1Schedule(uId, getScheduleJsonFromBridge(uId));
                     if (v1Schedule == null) {
-                        System.out.println(arcId + " has no schedule");
+                        fileLogger.write(arcId + " has no schedule");
                         continue;
                     }
 
-                    System.out.println("Performing V2 migration on " + arcId);
+                    fileLogger.write("Performing V2 migration on " + arcId);
 
                     // Check for a user that has already migrated to V2 and signed into the app
                     SageUserClientData clientData = SageUserClientData.Companion.fromStudyParticipant(gson, p);
                     boolean hasMigrated = SageUserClientData.Companion.hasMigrated(clientData);
 
                     if (!hasMigrated) {
-                        System.out.println("Creating schedule for " + arcId);
+                        fileLogger.write("Creating schedule for " + arcId);
                         createV2Schedule(arcId, v1Schedule, uId, sId);
                     }
 
@@ -113,12 +119,12 @@ public class ScheduleV2Migration {
                     // If the user has already signed into the V2 app, don't overwrite their client data,
                     // because it could overwrite any schedule or availability changes the user did in the mobile app.
                     if (!hasMigrated) {
-                        System.out.println("Updating user client data for " + arcId);
+                        fileLogger.write("Updating user client data for " + arcId);
                         updateUserClientData(timeline, p, availability, earningsController);
                     }
                     // However, always update their adherence record list as it should be safe
                     // and will not overwrite any data from the new V2 mobile app.
-                    System.out.println("Updating adherence for " + arcId);
+                    fileLogger.write("Updating adherence for " + arcId);
                     updateAdherenceRecords(timeline, eventList, uId, sId, v1Schedule, earningsController);
                 } catch (Exception e) {
                     errorStrings.append("\nError migrating ").append(arcId)
@@ -127,7 +133,11 @@ public class ScheduleV2Migration {
             }
         }
 
-        System.out.println("\n" + errorStrings.toString());
+        if (errorStrings.length() == 0) {
+            fileLogger.write("\nNoErrors");
+        } else {
+            fileLogger.write("\n" + errorStrings.toString());
+        }
     }
 
     public static String getScheduleJsonFromBridge(String uId) throws IOException {
@@ -192,7 +202,7 @@ public class ScheduleV2Migration {
     createV1Schedule(String uId, String scheduleJson) throws IOException {
         TestSchedule testSchedule = createHMSchedule(uId, scheduleJson);
         if (testSchedule == null) {
-            System.out.println("User " + uId + " has no schedule yet");
+            fileLogger.write("User " + uId + " has no schedule yet");
             return null;
         }
         return controller.createV1Schedule(testSchedule);
@@ -202,7 +212,7 @@ public class ScheduleV2Migration {
     createV2Schedule(String arcId, SageV1Schedule v1Schedule, String uId, String sId) throws IOException {
 
         String iANATimezone = getTimezone(v1Schedule);
-        System.out.println("User timezone is " + iANATimezone);
+        fileLogger.write("User timezone is " + iANATimezone);
 
         DateTime studyStart = SageScheduleController.Companion
                 .createDateTime(v1Schedule.getStudyBursts().get(0).getStartDate(), iANATimezone)
@@ -233,11 +243,11 @@ public class ScheduleV2Migration {
                         SageScheduleController.Companion.getDaysInAllStudyBursts() * i;
                 if ((expectedDays - daysFromStart) == 1) {
                     startDate = startDate.plusDays(1);
-                    System.out.println(arcId + " study burst " + (i+1) +
+                    fileLogger.write(arcId + " study burst " + (i+1) +
                             " is off by 1 day, moving to 1 day in the future");
                 } else if ((expectedDays - daysFromStart) == -1) {
                     startDate = startDate.minusDays(1);
-                    System.out.println(arcId + " study burst " + (i+1) +
+                    fileLogger.write(arcId + " study burst " + (i+1) +
                             " is off by 1 day, moving to 1 day in the past");
                 }
             }
@@ -314,7 +324,7 @@ public class ScheduleV2Migration {
     createV2Availability(String uId, String availabilityJson) throws IOException {
         WakeSleepSchedule wakeSleepSchedule = createHMAvailability(uId, availabilityJson);
         if (wakeSleepSchedule == null) {
-            System.out.println("User has no availability yet");
+            fileLogger.write("User has no availability yet");
             return null;
         }
         return controller.createV2Availability(wakeSleepSchedule);
@@ -358,7 +368,7 @@ public class ScheduleV2Migration {
     public static List<AdherenceRecord> createAdherenceRecords(
             Timeline timeline, StudyActivityEventList eventList,
             SageV1Schedule v1Schedule,
-            SageEarningsControllerV2 earningsController) {
+            SageEarningsControllerV2 earningsController) throws IOException {
 
         String iANATimezone = getTimezone(v1Schedule);
 
@@ -388,7 +398,7 @@ public class ScheduleV2Migration {
                         gson.toJsonTree(completed), iANATimezone));
             }
         }
-        System.out.println(i + " adherence records created");
+        fileLogger.write(i + " adherence records created");
 
         return adherenceRecordList;
     }

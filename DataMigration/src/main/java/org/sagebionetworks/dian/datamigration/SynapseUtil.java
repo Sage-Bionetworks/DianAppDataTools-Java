@@ -38,12 +38,14 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.sagebionetworks.client.SynapseClient;
 import org.sagebionetworks.client.SynapseClientImpl;
 import org.sagebionetworks.client.exceptions.SynapseException;
+import org.sagebionetworks.client.exceptions.SynapseServerException;
 import org.sagebionetworks.repo.model.EntityChildrenRequest;
 import org.sagebionetworks.repo.model.EntityChildrenResponse;
 import org.sagebionetworks.repo.model.EntityHeader;
 import org.sagebionetworks.repo.model.EntityType;
 import org.sagebionetworks.repo.model.FileEntity;
 import org.sagebionetworks.repo.model.Project;
+import org.sagebionetworks.repo.model.file.CloudProviderFileHandleInterface;
 import org.sagebionetworks.repo.model.file.FileHandleAssociateType;
 import org.sagebionetworks.repo.model.file.FileHandleAssociation;
 import org.sagebionetworks.schema.generator.FileUtils;
@@ -61,7 +63,7 @@ import javax.annotation.Nullable;
 public class SynapseUtil {
 
     public static String synapsePersonalAccessToken = System.getenv("SYN_PAT");
-    private static String projectId = System.getenv("SYN_PROJ_ID");
+    public static String projectId = System.getenv("SYN_PROJ_ID");
 
     public static SynapseClient synapse;
 
@@ -300,5 +302,39 @@ public class SynapseUtil {
             }
         }
         return null;
+    }
+
+    /**
+     * Upload a file to Synapse
+     *
+     * @param file the file to upload
+     * @param parentId the ID of the folder or project to which the file will be uploaded
+     * @return the ID of the created entity
+     * @throws IOException
+     * @throws SynapseException
+     * @throws InterruptedException
+     */
+    public static String uploadToSynapse(
+            final File file,
+            String parentId) throws Throwable {
+        CloudProviderFileHandleInterface uploadResult =
+                synapse.multipartUpload(file, null, true, false);
+        FileEntity fileEntity = new FileEntity();
+        String fileName = file.getName();
+        fileEntity.setName(fileName);
+        fileEntity.setDataFileHandleId(uploadResult.getId());
+        fileEntity.setParentId(parentId);
+        try {
+            fileEntity = synapse.createEntity(fileEntity);
+        } catch (SynapseServerException e) {
+            // We will arrive here if the file already exists, though the exception may also be due to another problem.
+            // We try to query for the file.  If the exception was due to another problem, we will likely throw another
+            // exception and terminate.
+            String fileId = synapse.lookupChild(parentId, fileName);
+            fileEntity = synapse.getEntity(fileId, FileEntity.class);
+            fileEntity.setDataFileHandleId(uploadResult.getId());
+            fileEntity = synapse.putEntity(fileEntity);
+        }
+        return fileEntity.getId();
     }
 }
