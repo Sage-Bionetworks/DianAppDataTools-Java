@@ -23,7 +23,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: ghcr.io/Sage-Bionetworks/DianDataMigration
+          images: ghcr.io/${{ github.GITHUB_REPOSITORY_OWNER }}/DianDataMigration 
           tags: |
             type=ref,event=branch
             type=ref,event=tag
